@@ -79,7 +79,7 @@ def main():
 
     try:
         with Client(
-            name="WZUser",
+            name="AmaterasuUser",
             in_memory=True,
             api_id=int(api_key.split(":")[0]),
             api_hash=api_hash,

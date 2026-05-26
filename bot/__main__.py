@@ -138,5 +138,5 @@ TgClient.bot.add_handler(
     )
 )
 
-LOGGER.info("WZ Client(s) & Services Started !")
+LOGGER.info("Amaterasu Client(s) & Services Started !")
 bot_loop.run_forever()

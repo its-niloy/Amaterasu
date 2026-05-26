@@ -23,7 +23,7 @@ class TgClient:
     MAX_SPLIT_SIZE = 2097152000
 
     @classmethod
-    def wztgClient(cls, *args, **kwargs):
+    def tgClient(cls, *args, **kwargs):
         kwargs["api_id"] = Config.TELEGRAM_API
         kwargs["api_hash"] = Config.TELEGRAM_HASH
         kwargs["proxy"] = Config.TG_PROXY
@@ -40,8 +40,8 @@ class TgClient:
     @classmethod
     async def start_hclient(cls, no, b_token):
         try:
-            hbot = await cls.wztgClient(
-                f"WZ-HBot{no}",
+            hbot = await cls.tgClient(
+                f"Amaterasu-HBot{no}",
                 bot_token=b_token,
                 no_updates=True,
             ).start()
@@ -80,8 +80,8 @@ class TgClient:
 
         async def start_sclient(client_id, token):
             try:
-                client = await cls.wztgClient(
-                    f"WZ-StreamBot{client_id}",
+                client = await cls.tgClient(
+                    f"Amaterasu-StreamBot{client_id}",
                     bot_token=token,
                     no_updates=True,
                 ).start()
@@ -109,8 +109,8 @@ class TgClient:
     async def start_bot(cls):
         LOGGER.info("Generating client from BOT_TOKEN")
         cls.ID = Config.BOT_TOKEN.split(":", 1)[0]
-        cls.bot = cls.wztgClient(
-            f"WZ-Bot{cls.ID}",
+        cls.bot = cls.tgClient(
+            f"Amaterasu-Bot{cls.ID}",
             bot_token=Config.BOT_TOKEN,
             workdir="/usr/src/app",
         )
@@ -124,8 +124,8 @@ class TgClient:
         if Config.USER_SESSION_STRING:
             LOGGER.info("Generating client from USER_SESSION_STRING")
             try:
-                cls.user = cls.wztgClient(
-                    "WZ-User",
+                cls.user = cls.tgClient(
+                    "Amaterasu-User",
                     session_string=Config.USER_SESSION_STRING,
                     sleep_threshold=60,
                     no_updates=True,
@@ -135,7 +135,7 @@ class TgClient:
                 if cls.IS_PREMIUM_USER:
                     cls.MAX_SPLIT_SIZE = 4194304000
                 uname = cls.user.me.username or cls.user.me.first_name
-                LOGGER.info(f"WZ User : [{uname}] Started!")
+                LOGGER.info(f"Amaterasu User : [{uname}] Started!")
             except Exception as e:
                 LOGGER.error(f"Failed to start client from USER_SESSION_STRING. {e}")
                 cls.IS_PREMIUM_USER = False

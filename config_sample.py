@@ -49,20 +49,6 @@ LEECH_CAPTION = ""
 THUMBNAIL_LAYOUT = ""
 EXCLUDED_EXTENSIONS = ""
 
-# External File Hosts & API Keys (Leech/Upload)
-DEBRID_LINK_API = ""
-FILELION_API = ""
-STREAMWISH_API = ""
-GOFILE_API = ""
-GOFILE_FOLDER_ID = ""
-PIXELDRAIN_KEY = ""
-PROTECTED_API = ""
-BUZZHEAVIER_API = ""
-
-# Upload/Performance Settings
-HYPER_THREADS = 0
-
-
 # ==========================================
 # 5. GOOGLE DRIVE OPTIONS
 # ==========================================
@@ -214,9 +200,9 @@ DISABLE_LEECH = False
 DISABLE_BULK = False
 DISABLE_MULTI = False
 DISABLE_FF_MODE = False
-UPSTREAM_REPO = ""
-UPSTREAM_BRANCH = ""
-UPDATE_PKGS = False
+UPSTREAM_REPO = "https://github.com/its-niloy/Amaterasu"
+UPSTREAM_BRANCH = "main"
+UPDATE_PKGS = True
 RSS_DELAY = 0
 RSS_CHAT = ""
 RSS_SIZE_LIMIT = 0
