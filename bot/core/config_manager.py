@@ -341,8 +341,8 @@ class Config:
 
 
 class BinConfig:
-    ARIA2_NAME = "blitzfetcher"
-    QBIT_NAME = "stormtorrent"
-    FFMPEG_NAME = "mediaforge"
-    RCLONE_NAME = "ghostdrive"
-    SABNZBD_NAME = "newsripper"
+    ARIA2_NAME = "aria2c"
+    QBIT_NAME = "qbittorrent-nox"
+    FFMPEG_NAME = "ffmpeg"
+    RCLONE_NAME = "rclone"
+    SABNZBD_NAME = "sabnzbdplus"

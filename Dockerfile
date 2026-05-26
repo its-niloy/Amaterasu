@@ -33,6 +33,9 @@ RUN apt-get update && apt-get upgrade -y && \
         p7zip-rar \
         unrar \
         unzip \
+        cpulimit \
+        rclone \
+        sabnzbdplus \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
