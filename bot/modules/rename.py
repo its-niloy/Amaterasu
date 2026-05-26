@@ -2,7 +2,7 @@ import os
 import asyncio
 from pyrogram.filters import command, reply, private
 from pyrogram.handlers import MessageHandler, CallbackQueryHandler
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, ForceReply
 
 from bot import LOGGER, bot_loop
 from bot.core.tg_client import TgClient
@@ -20,6 +20,7 @@ pending_replies = {}
 
 # Dictionary to track the original media message when renaming (user_id -> Message)
 user_media_to_rename = {}
+user_rename_preferences = {}
 
 def is_rename_mode(user_id: int) -> bool:
     return user_id in RENAME_MODE_USERS
@@ -222,23 +223,28 @@ async def rename_callback_handler(client, query):
             return
             
         await query.answer()
+        await delete_message(query.message)
         
-        prompt = await edit_message(
-            query.message, 
-            "✏️ <b>Enter the new filename (with extension)!</b>\n\n"
-            "Send the new name as a text message replying to this prompt."
+        await client.send_message(
+            chat_id=query.message.chat.id,
+            text="✏️ **Please enter the new filename:**
+
+_Reply to this message with the new name._",
+            reply_to_message_id=media_msg.id,
+            reply_markup=ForceReply(True)
         )
         
-        reply_msg = await wait_for_reply(prompt.id, timeout=60)
-        if not reply_msg or not getattr(reply_msg, "text", None):
-            user_media_to_rename.pop(user_id, None)
-            await edit_message(prompt, "✖️ <b>Timeout or invalid filename entered. Operation cancelled.</b>")
+    elif action.startswith("up_"):
+        upload_type = action.split("_")[1] # document, video, audio
+        new_name = user_rename_preferences.get(user_id)
+        media_msg = user_media_to_rename.get(user_id)
+        
+        if not new_name or not media_msg:
+            await query.answer("Session expired. Please try again.", show_alert=True)
             return
             
-        new_name = reply_msg.text.strip()
-        await delete_message(reply_msg)
-        
-        progress_msg = await edit_message(prompt, "⏳ <b>Downloading file from Telegram...</b>")
+        await query.answer()
+        progress_msg = await edit_message(query.message, "⏳ <b>Downloading file from Telegram...</b>")
         
         try:
             import time
@@ -302,25 +308,36 @@ async def rename_callback_handler(client, query):
                 except Exception:
                     pass
 
-            media = get_media(media_msg)
-            media_type = type(media).__name__.lower()
-            
-            if media_type == "video":
+            # Extract duration if video or audio
+            duration = 0
+            if upload_type in ["video", "audio"]:
+                try:
+                    from hachoir.metadata import extractMetadata
+                    from hachoir.parser import createParser
+                    metadata = extractMetadata(createParser(local_path))
+                    if metadata and metadata.has("duration"):
+                        duration = metadata.get('duration').seconds
+                except Exception:
+                    pass
+
+            if upload_type == "video":
                 await client.send_video(
                     chat_id=media_msg.chat.id,
                     video=local_path,
                     caption=custom_caption,
                     thumb=thumb_path if has_thumb else None,
                     supports_streaming=True,
+                    duration=duration,
                     reply_to_message_id=media_msg.id,
                     progress=upload_progress
                 )
-            elif media_type == "audio":
+            elif upload_type == "audio":
                 await client.send_audio(
                     chat_id=media_msg.chat.id,
                     audio=local_path,
                     caption=custom_caption,
                     thumb=thumb_path if has_thumb else None,
+                    duration=duration,
                     reply_to_message_id=media_msg.id,
                     progress=upload_progress
                 )
@@ -340,6 +357,7 @@ async def rename_callback_handler(client, query):
                 os.remove(local_path)
                 
             user_media_to_rename.pop(user_id, None)
+            user_rename_preferences.pop(user_id, None)
             
         except Exception as e:
             LOGGER.error(f"Error renaming file: {e}")
@@ -352,3 +370,59 @@ async def reply_listener(client, message):
         future = pending_replies[message.reply_to_message.id]
         if not future.done():
             future.set_result(message)
+
+
+async def rename_force_reply_handler(client, message):
+    reply_message = message.reply_to_message
+    if not reply_message or not reply_message.reply_markup or not isinstance(reply_message.reply_markup, ForceReply):
+        return
+        
+    if "Please enter the new filename" not in reply_message.text:
+        return
+        
+    new_name = message.text.strip()
+    user_id = message.from_user.id
+    
+    media_msg = reply_message.reply_to_message
+    if not media_msg:
+        media_msg = user_media_to_rename.get(user_id)
+        if not media_msg:
+            await send_message(message, "Expired. Send the file again.")
+            return
+
+    media = get_media(media_msg)
+    if not media:
+        return
+        
+    # Infer extension
+    if "." not in new_name:
+        extn = "bin"
+        if hasattr(media, "file_name") and media.file_name and "." in media.file_name:
+            extn = media.file_name.rsplit('.', 1)[-1]
+        elif getattr(media, "mime_type", None):
+            mime = media.mime_type
+            if "video" in mime: extn = "mp4"
+            elif "audio" in mime: extn = "mp3"
+            elif "image" in mime: extn = "jpg"
+            else: extn = "mkv"
+        new_name = f"{new_name}.{extn}"
+        
+    user_rename_preferences[user_id] = new_name
+    
+    await delete_message(reply_message)
+    await delete_message(message)
+    
+    buttons = [[InlineKeyboardButton("📁 Document", callback_data=f"ren_up_document_{user_id}")]]
+    
+    media_type = type(media).__name__.lower()
+    if media_type in ["video", "document"]:
+        buttons.append([InlineKeyboardButton("🎥 Video", callback_data=f"ren_up_video_{user_id}")])
+    elif media_type == "audio":
+        buttons.append([InlineKeyboardButton("🎵 Audio", callback_data=f"ren_up_audio_{user_id}")])
+        
+    await send_message(
+        message, 
+        f"**Select the output file type:**\n\n**File Name:** `{new_name}`",
+        reply_markup=InlineKeyboardMarkup(buttons),
+        reply_to_message_id=media_msg.id
+    )

@@ -414,12 +414,18 @@ def add_handlers():
     TgClient.bot.add_handler(
         CallbackQueryHandler(
             rename_callback_handler,
-            filters=regex("^(ren_choice_|leech_orig_)")
+            filters=regex("^(ren_choice_|leech_orig_|ren_up_)")
         )
     )
     TgClient.bot.add_handler(
         MessageHandler(
             reply_listener,
+            filters=reply,
+        )
+    )
+    TgClient.bot.add_handler(
+        MessageHandler(
+            rename_force_reply_handler,
             filters=reply,
         )
     )
