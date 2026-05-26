@@ -51,9 +51,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+templates = Jinja2Templates(directory="web/templates")
 
-
-templates = Jinja2Templates(directory="web/templates/")
 
 basicConfig(
     format="[%(asctime)s] [%(levelname)s] - %(message)s",  #  [%(filename)s:%(lineno)d]
@@ -379,6 +378,45 @@ async def get_message(client, chat_id: int, message_id: int) -> any:
         raise HTTPException(status_code=404, detail="Message does not contain media")
     return message
 
+@app.api_route("/watch/{chat_id}/{message_id}", methods=["GET"])
+@app.api_route("/watch/{chat_id}/{message_id}/{filename}", methods=["GET"])
+async def watch_media(chat_id: str, message_id: int, request: Request, filename: str = None):
+    try:
+        chat_id = int(chat_id)
+    except ValueError:
+        pass
+    from bot.core.tg_client import TgClient
+
+    client_id, client = select_optimal_client()
+    if client_id not in TgClient.stream_loads:
+        TgClient.stream_loads[client_id] = 0
+    TgClient.stream_loads[client_id] += 1
+    
+    try:
+        message = await get_message(client, chat_id, message_id)
+        media = get_media(message)
+        
+        provided_hash = request.query_params.get("hash")
+        if not provided_hash:
+            raise HTTPException(status_code=403, detail="Missing secure hash")
+        unique_id = getattr(media, "file_unique_id", "")
+        secure_hash = unique_id[:6] if len(unique_id) >= 6 else unique_id
+        if provided_hash != secure_hash:
+            raise HTTPException(status_code=403, detail="Invalid secure hash")
+            
+        if not filename:
+            filename = getattr(media, "file_name", None) or f"Stream_{message_id}.bin"
+            
+        from urllib.parse import quote
+        stream_url = f"/stream/{chat_id}/{message_id}/{quote(filename)}?hash={secure_hash}"
+        
+        return templates.TemplateResponse(request, "player.html", {
+            "filename": filename,
+            "stream_url": stream_url
+        })
+    finally:
+        TgClient.stream_loads[client_id] -= 1
+
 @app.api_route("/stream/{chat_id}/{message_id}", methods=["GET", "HEAD"])
 @app.api_route("/stream/{chat_id}/{message_id}/{filename}", methods=["GET", "HEAD"])
 async def stream_media(chat_id: str, message_id: int, request: Request, filename: str = None):
@@ -397,6 +435,15 @@ async def stream_media(chat_id: str, message_id: int, request: Request, filename
     try:
         message = await get_message(client, chat_id, message_id)
         media = get_media(message)
+        
+        provided_hash = request.query_params.get("hash")
+        if not provided_hash:
+            raise HTTPException(status_code=403, detail="Missing secure hash")
+        unique_id = getattr(media, "file_unique_id", "")
+        secure_hash = unique_id[:6] if len(unique_id) >= 6 else unique_id
+        if provided_hash != secure_hash:
+            raise HTTPException(status_code=403, detail="Invalid secure hash")
+            
         file_size = getattr(media, "file_size", 0) or 0
         mime_type = getattr(media, "mime_type", None)
         if not mime_type:

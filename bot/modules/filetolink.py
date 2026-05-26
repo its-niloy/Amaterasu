@@ -19,10 +19,13 @@ def get_media(message):
             return media
     return None
 
-async def generate_link_markup(chat_id, message_id, filename):
+async def generate_link_markup(chat_id, message_id, filename, secure_hash=""):
     encoded_filename = quote(filename)
-    stream_link = f"{Config.BASE_URL}/stream/{chat_id}/{message_id}/{encoded_filename}"
-    download_link = f"{Config.BASE_URL}/stream/{chat_id}/{message_id}/{encoded_filename}?disposition=attachment"
+    hash_query = f"?hash={secure_hash}" if secure_hash else ""
+    hash_query_amp = f"&hash={secure_hash}" if secure_hash else ""
+    
+    stream_link = f"{Config.BASE_URL}/watch/{chat_id}/{message_id}/{encoded_filename}{hash_query}"
+    download_link = f"{Config.BASE_URL}/stream/{chat_id}/{message_id}/{encoded_filename}?disposition=attachment{hash_query_amp}"
     
     buttons = [
         [
@@ -63,11 +66,16 @@ async def process_media_message(client, message, reply_to_msg):
             media_copy = await reply_to_msg.copy(chat_id=Config.BIN_CHANNEL)
             chat_id = Config.BIN_CHANNEL
             message_id = media_copy.id
+            copied_media = get_media(media_copy)
+            unique_id = getattr(copied_media, "file_unique_id", "") if copied_media else ""
         else:
             chat_id = reply_to_msg.chat.id
             message_id = reply_to_msg.id
+            unique_id = getattr(media, "file_unique_id", "")
             
-        markup, stream_link, download_link = await generate_link_markup(chat_id, message_id, filename)
+        secure_hash = unique_id[:6] if len(unique_id) >= 6 else unique_id
+            
+        markup, stream_link, download_link = await generate_link_markup(chat_id, message_id, filename, secure_hash)
         
         caption = (
             f"<b>File Name:</b> <code>{filename}</code>\n"
@@ -116,11 +124,16 @@ async def link_command_handler(client, message):
                     media_copy = await msg.copy(chat_id=Config.BIN_CHANNEL)
                     t_chat_id = Config.BIN_CHANNEL
                     t_message_id = media_copy.id
+                    copied_media = get_media(media_copy)
+                    unique_id = getattr(copied_media, "file_unique_id", "") if copied_media else ""
                 else:
                     t_chat_id = chat_id
                     t_message_id = msg.id
+                    unique_id = getattr(media, "file_unique_id", "")
                     
-                markup, stream_link, download_link = await generate_link_markup(t_chat_id, t_message_id, filename)
+                secure_hash = unique_id[:6] if len(unique_id) >= 6 else unique_id
+                    
+                markup, stream_link, download_link = await generate_link_markup(t_chat_id, t_message_id, filename, secure_hash)
                 
                 readable_size = get_readable_file_size(getattr(media, "file_size", 0) or 0)
                 caption = (
