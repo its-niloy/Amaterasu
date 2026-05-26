@@ -70,7 +70,7 @@ class YoutubeDLHelper:
             "overwrites": True,
             "writethumbnail": True,
             "trim_file_name": 220,
-            "ffmpeg_location": f"/bin/{BinConfig.FFMPEG_NAME}",
+            "ffmpeg_location": BinConfig.FFMPEG_NAME,
             "fragment_retries": 10,
             "retries": 10,
             "retry_sleep_functions": {
