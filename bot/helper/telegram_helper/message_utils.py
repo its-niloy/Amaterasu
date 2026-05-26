@@ -71,7 +71,7 @@ async def send_message(message, text, buttons=None, block=True, photo=None, **kw
             except Exception:
                 LOGGER.error("Error while sending photo", exc_info=True)
                 return
-        if isinstance(message, int):
+        if isinstance(message, (int, str)):
             return await TgClient.bot.send_message(
                 chat_id=message,
                 text=text,
@@ -79,12 +79,6 @@ async def send_message(message, text, buttons=None, block=True, photo=None, **kw
                 disable_notification=True,
                 reply_markup=buttons,
             )
-        if isinstance(message, str):
-            import traceback
-            LOGGER.error(f"FATAL: send_message called with string message '{message}'. Traceback:")
-            LOGGER.error("".join(traceback.format_stack()))
-            return None
-            
         return await message.reply(
             text=text,
             quote=True,
