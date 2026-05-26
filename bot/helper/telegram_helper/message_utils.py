@@ -79,6 +79,12 @@ async def send_message(message, text, buttons=None, block=True, photo=None, **kw
                 disable_notification=True,
                 reply_markup=buttons,
             )
+        if isinstance(message, str):
+            import traceback
+            LOGGER.error(f"FATAL: send_message called with string message '{message}'. Traceback:")
+            LOGGER.error("".join(traceback.format_stack()))
+            return None
+            
         return await message.reply(
             text=text,
             quote=True,
