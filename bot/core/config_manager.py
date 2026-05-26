@@ -217,7 +217,7 @@ class Config:
         cls.PORT = resolved_port
         cls.BASE_URL_PORT = resolved_port
 
-        if not cls.BASE_URL and cls.FQDN:
+        if cls.FQDN:
             protocol = "https" if cls.HAS_SSL else "http"
             if cls.NO_PORT or not cls.PORT or cls.PORT in [80, 443]:
                 cls.BASE_URL = f"{protocol}://{cls.FQDN}"
