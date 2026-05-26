@@ -49,6 +49,20 @@ LEECH_CAPTION = ""
 THUMBNAIL_LAYOUT = ""
 EXCLUDED_EXTENSIONS = ""
 
+# External File Hosts & API Keys (Leech/Upload)
+DEBRID_LINK_API = ""
+FILELION_API = ""
+STREAMWISH_API = ""
+GOFILE_API = ""
+GOFILE_FOLDER_ID = ""
+PIXELDRAIN_KEY = ""
+PROTECTED_API = ""
+BUZZHEAVIER_API = ""
+
+# Upload/Performance Settings
+HYPER_THREADS = 0
+
+
 # ==========================================
 # 5. GOOGLE DRIVE OPTIONS
 # ==========================================

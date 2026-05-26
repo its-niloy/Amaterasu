@@ -29,6 +29,8 @@ class Config:
     FILELION_API = ""
     MEDIA_STORE = True
     FORCE_SUB_IDS = ""
+    FORCE_CHANNEL_ID = ""
+    FSUB_IDS = ""
     GOFILE_API = ""
     GOFILE_FOLDER_ID = ""
     PIXELDRAIN_KEY = ""
@@ -101,6 +103,8 @@ class Config:
     SUDO_USERS = ""
     TELEGRAM_API = 0
     TELEGRAM_HASH = ""
+    API_ID = 0
+    API_HASH = ""
     TG_PROXY = None
     THUMBNAIL_LAYOUT = ""
     VERIFY_TIMEOUT = 0
@@ -189,7 +193,23 @@ class Config:
         cls.construct_base_url()
 
     @classmethod
+    def align_aliases(cls):
+        # Align aliases for Telegram credentials
+        if not cls.TELEGRAM_API and cls.API_ID:
+            cls.TELEGRAM_API = cls.API_ID
+        if not cls.TELEGRAM_HASH and cls.API_HASH:
+            cls.TELEGRAM_HASH = cls.API_HASH
+            
+        # Align aliases for Force Subscription Channels
+        if not cls.FORCE_SUB_IDS:
+            if cls.FORCE_CHANNEL_ID:
+                cls.FORCE_SUB_IDS = cls.FORCE_CHANNEL_ID
+            elif cls.FSUB_IDS:
+                cls.FORCE_SUB_IDS = cls.FSUB_IDS
+
+    @classmethod
     def construct_base_url(cls):
+        cls.align_aliases()
         # Synchronize and robustly resolve PORT and BASE_URL_PORT
         env_port = getenv("PORT", "")
         if env_port:
@@ -258,6 +278,7 @@ class Config:
                 value = getattr(settings, attr)
                 if value:
                     cls.MULTI_TOKENS[attr] = value.strip() if isinstance(value, str) else str(value)
+        cls.align_aliases()
         for key in ["BOT_TOKEN", "OWNER_ID", "TELEGRAM_API", "TELEGRAM_HASH"]:
             value = getattr(cls, key)
             if isinstance(value, str):
@@ -331,6 +352,7 @@ class Config:
                 setattr(cls, key, value)
             elif key.startswith("MULTI_TOKEN") and value:
                 cls.MULTI_TOKENS[key] = value.strip() if isinstance(value, str) else str(value)
+        cls.align_aliases()
         for key in ["BOT_TOKEN", "OWNER_ID", "TELEGRAM_API", "TELEGRAM_HASH"]:
             value = getattr(cls, key)
             if isinstance(value, str):
