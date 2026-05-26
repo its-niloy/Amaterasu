@@ -390,6 +390,8 @@ async def stream_media(chat_id: str, message_id: int, request: Request, filename
     from fastapi.responses import StreamingResponse, Response
 
     client_id, client = select_optimal_client()
+    if client_id not in TgClient.stream_loads:
+        TgClient.stream_loads[client_id] = 0
     TgClient.stream_loads[client_id] += 1
     
     try:
