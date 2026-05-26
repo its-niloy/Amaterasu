@@ -307,6 +307,9 @@ async def load_configurations():
         async with aiopen(".netrc", "w"):
             pass
 
+    for d in ["sabnzbd", "accounts", "thumbnails", "rclone", "tokens", "cookies", "mediainfo"]:
+        await makedirs(d, exist_ok=True)
+
     await (
         await create_subprocess_shell(
             f"chmod 600 .netrc && cp .netrc /root/.netrc && chmod +x setpkgs.sh && ./setpkgs.sh {BinConfig.ARIA2_NAME} {BinConfig.SABNZBD_NAME}"
