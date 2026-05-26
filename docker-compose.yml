@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  amaterasu:
+    build: .
+    container_name: amaterasu-bot
+    restart: always
+    network_mode: "host"
+    environment:
+      - TZ=Asia/Dhaka
+    volumes:
+      - .:/usr/src/app:z
+    # Note: Network mode is set to host so ports 8080 (FileToLink API) 
+    # and 80 (Torrent port mapping) will automatically map to the host system.

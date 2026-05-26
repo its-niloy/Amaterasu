@@ -1,0 +1,211 @@
+# ==========================================
+# 1. REQUIRED CONFIGURATION
+# ==========================================
+BOT_TOKEN = ""
+OWNER_ID = 0
+TELEGRAM_API = 0
+TELEGRAM_HASH = ""
+DATABASE_URL = ""
+
+# ==========================================
+# 2. TELEGRAM CLIENT & SESSIONS
+# ==========================================
+USER_SESSION_STRING = ""
+HELPER_TOKENS = ""
+DEFAULT_LANG = ""
+TG_PROXY = {}
+BOT_PM = False
+BOT_MAX_TASKS = 0
+USER_MAX_TASKS = 0
+USER_TIME_INTERVAL = 0
+VERIFY_TIMEOUT = 0
+LOGIN_PASS = ""
+SET_COMMANDS = False
+TIMEZONE = ""
+
+# ==========================================
+# 3. CHAT & PERMISSIONS
+# ==========================================
+CMD_SUFFIX = ""
+AUTHORIZED_CHATS = ""
+SUDO_USERS = ""
+FORCE_SUB_IDS = ""
+BANNED_CHANNELS = ""
+
+# ==========================================
+# 4. LEECH & UPLOADS
+# ==========================================
+DEFAULT_UPLOAD = ""
+LEECH_SPLIT_SIZE = 0
+AS_DOCUMENT = False
+EQUAL_SPLITS = False
+MEDIA_GROUP = False
+USER_TRANSMISSION = False
+HYBRID_LEECH = False
+LEECH_PREFIX = ""
+LEECH_SUFFIX = ""
+LEECH_FONT = ""
+LEECH_CAPTION = ""
+THUMBNAIL_LAYOUT = ""
+EXCLUDED_EXTENSIONS = ""
+
+# ==========================================
+# 5. GOOGLE DRIVE OPTIONS
+# ==========================================
+GDRIVE_ID = ""
+GD_DESP = ""
+IS_TEAM_DRIVE = False
+STOP_DUPLICATE = False
+INDEX_URL = ""
+USE_SERVICE_ACCOUNTS = False
+
+# ==========================================
+# 6. RCLONE OPTIONS
+# ==========================================
+RCLONE_PATH = ""
+RCLONE_FLAGS = ""
+RCLONE_SERVE_URL = ""
+SHOW_CLOUD_LINK = False
+RCLONE_SERVE_PORT = 0
+RCLONE_SERVE_USER = ""
+RCLONE_SERVE_PASS = ""
+
+# ==========================================
+# 7. DOWNLOAD ENGINE LIMITS & CONFIGS
+# ==========================================
+DIRECT_LIMIT = 0
+MEGA_LIMIT = 0
+TORRENT_LIMIT = 0
+GD_DL_LIMIT = 0
+RC_DL_LIMIT = 0
+CLONE_LIMIT = 0
+JD_LIMIT = 0
+NZB_LIMIT = 0
+YTDLP_LIMIT = 0
+PLAYLIST_LIMIT = 0
+LEECH_LIMIT = 0
+EXTRACT_LIMIT = 0
+ARCHIVE_LIMIT = 0
+STORAGE_LIMIT = 0
+
+# ==========================================
+# 8. TORRENTS & ARIA2C / QBITTORRENT
+# ==========================================
+DISABLE_TORRENTS = False
+DISABLE_SEED = False
+TORRENT_TIMEOUT = 0
+BASE_URL = ""
+BASE_URL_PORT = 0
+WEB_PINCODE = False
+QUEUE_ALL = 0
+QUEUE_DOWNLOAD = 0
+QUEUE_UPLOAD = 0
+
+# ==========================================
+# 9. JDOWNLOADER & SABNZBD
+# ==========================================
+JD_EMAIL = ""
+JD_PASS = ""
+MEGA_EMAIL = ""
+MEGA_PASSWORD = ""
+USENET_SERVERS = []
+
+# ==========================================
+# 10. MEDIA SEARCH & IMDB
+# ==========================================
+IMDB_TEMPLATE = ""
+INSTADL_API = ""
+HYDRA_IP = ""
+HYDRA_API_KEY = ""
+
+# ==========================================
+# 11. YOUTUBE TOOLS
+# ==========================================
+YT_DESP = ""
+YT_TAGS = []
+YT_CATEGORY_ID = 0
+YT_PRIVACY_STATUS = ""
+YT_DLP_OPTIONS = ""
+
+# ==========================================
+# 12. TELEGRAPH & METADATA
+# ==========================================
+AUTHOR_NAME = ""
+AUTHOR_URL = ""
+
+# ==========================================
+# 13. LOG CHANNELS & NOTIFIERS
+# ==========================================
+LEECH_DUMP_CHAT = ""
+LINKS_LOG_ID = ""
+MIRROR_LOG_ID = ""
+STATUS_LIMIT = 0
+STATUS_UPDATE_INTERVAL = 0
+INCOMPLETE_TASK_NOTIFIER = False
+CLEAN_LOG_MSG = False
+DELETE_LINKS = False
+MEDIA_STORE = False
+
+# ==========================================
+# 14. DYNAMIC FILE-TO-LINK STREAMING
+# ==========================================
+BIN_CHANNEL = 0
+MAX_BATCH_FILES = 0
+CHANNEL = False
+MULTI_TOKEN1 = ""
+MULTI_TOKEN2 = ""
+MULTI_TOKEN3 = ""
+
+# Token System (FileToLink)
+TOKEN_ENABLED = False
+TOKEN_TTL_HOURS = 0
+
+# URL Shortener (FileToLink)
+SHORTEN_ENABLED = False
+SHORTEN_MEDIA_LINKS = False
+URL_SHORTENER_API_KEY = ""
+URL_SHORTENER_SITE = ""
+
+# Global Rate Limiting (FileToLink)
+GLOBAL_RATE_LIMIT = False
+MAX_GLOBAL_REQUESTS_PER_MINUTE = 0
+
+# Session Rate Limiting (FileToLink)
+RATE_LIMIT_ENABLED = False
+MAX_FILES_PER_PERIOD = 0
+RATE_LIMIT_PERIOD_MINUTES = 0
+MAX_QUEUE_SIZE = 0
+
+# ==========================================
+# 15. DYNAMIC STREAMING WEB SERVER
+# ==========================================
+FQDN = ""
+HAS_SSL = False
+PORT = 0
+NO_PORT = False
+NAME = ""
+SLEEP_THRESHOLD = 0
+WORKERS = 0
+BIND_ADDRESS = ""
+PING_INTERVAL = 0
+
+# ==========================================
+# 16. MISCELLANEOUS / EXTERNAL
+# ==========================================
+CMD_SUFFIX = ""
+NAME_SWAP = ""
+FFMPEG_CMDS = {}
+UPLOAD_PATHS = {}
+DISABLE_LEECH = False
+DISABLE_BULK = False
+DISABLE_MULTI = False
+DISABLE_FF_MODE = False
+UPSTREAM_REPO = ""
+UPSTREAM_BRANCH = ""
+UPDATE_PKGS = False
+RSS_DELAY = 0
+RSS_CHAT = ""
+RSS_SIZE_LIMIT = 0
+SEARCH_API_LINK = ""
+SEARCH_LIMIT = 0
+SEARCH_PLUGINS = []
