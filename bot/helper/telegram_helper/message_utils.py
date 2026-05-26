@@ -72,8 +72,13 @@ async def send_message(message, text, buttons=None, block=True, photo=None, **kw
                 LOGGER.error("Error while sending photo", exc_info=True)
                 return
         if isinstance(message, (int, str)):
+            try:
+                chat_id = int(message)
+            except ValueError:
+                chat_id = message
+                
             return await TgClient.bot.send_message(
-                chat_id=message,
+                chat_id=chat_id,
                 text=text,
                 disable_web_page_preview=True,
                 disable_notification=True,
