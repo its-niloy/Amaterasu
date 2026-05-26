@@ -169,7 +169,18 @@ async def rename_callback_handler(client, query):
                 future.set_result("skip")
         await query.answer("Using original filename.")
         return
-        
+
+    if data.startswith("ren_up_"):
+        # ren_up_document_12345 -> upload_type="document"
+        parts = data.split("_")
+        upload_type = parts[2]  # document, video, audio
+        target_user_id = int(parts[3])
+        if user_id != target_user_id:
+            await query.answer("This menu is not for you!", show_alert=True)
+            return
+        await _handle_upload(client, query, user_id, upload_type)
+        return
+
     if not data.startswith("ren_choice_"):
         return
         
@@ -227,143 +238,141 @@ async def rename_callback_handler(client, query):
         
         await client.send_message(
             chat_id=query.message.chat.id,
-            text="✏️ **Please enter the new filename:**
-
-_Reply to this message with the new name._",
+            text="✏️ **Please enter the new filename:**\n\n_Reply to this message with the new name._",
             reply_to_message_id=media_msg.id,
             reply_markup=ForceReply(True)
         )
         
-    elif action.startswith("up_"):
-        upload_type = action.split("_")[1] # document, video, audio
-        new_name = user_rename_preferences.get(user_id)
-        media_msg = user_media_to_rename.get(user_id)
-        
-        if not new_name or not media_msg:
-            await query.answer("Session expired. Please try again.", show_alert=True)
-            return
-            
-        await query.answer()
-        progress_msg = await edit_message(query.message, "⏳ <b>Downloading file from Telegram...</b>")
-        
-        try:
-            import time
-            last_dl_edit = 0
 
-            async def progress_callback(current, total):
-                nonlocal last_dl_edit
-                now = time.time()
-                if now - last_dl_edit < 4 and current < total:
-                    return
-                last_dl_edit = now
-                try:
-                    pct = (current * 100) / total if total else 0
-                    await edit_message(
-                        progress_msg, 
-                        f"⏳ <b>Downloading file from Telegram...</b>\n"
-                        f"Progress: <code>{pct:.1f}%</code> of {get_readable_file_size(total)}"
-                    )
-                except Exception:
-                    pass
+async def _handle_upload(client, query, user_id, upload_type):
+    new_name = user_rename_preferences.get(user_id)
+    media_msg = user_media_to_rename.get(user_id)
+    
+    if not new_name or not media_msg:
+        await query.answer("Session expired. Please try again.", show_alert=True)
+        return
+        
+    await query.answer()
+    progress_msg = await edit_message(query.message, "⏳ <b>Downloading file from Telegram...</b>")
+    
+    try:
+        import time
+        last_dl_edit = 0
+
+        async def progress_callback(current, total):
+            nonlocal last_dl_edit
+            now = time.time()
+            if now - last_dl_edit < 4 and current < total:
+                return
+            last_dl_edit = now
+            try:
+                pct = (current * 100) / total if total else 0
+                await edit_message(
+                    progress_msg, 
+                    f"⏳ <b>Downloading file from Telegram...</b>\n"
+                    f"Progress: <code>{pct:.1f}%</code> of {get_readable_file_size(total)}"
+                )
+            except Exception:
+                pass
+        
+        download_dir = "downloads"
+        if not os.path.exists(download_dir):
+            os.makedirs(download_dir)
             
-            download_dir = "downloads"
-            if not os.path.exists(download_dir):
-                os.makedirs(download_dir)
-                
-            local_path = await media_msg.download(
-                file_name=os.path.join(download_dir, new_name),
-                progress=progress_callback
+        local_path = await media_msg.download(
+            file_name=os.path.join(download_dir, new_name),
+            progress=progress_callback
+        )
+        
+        if not local_path or not os.path.exists(local_path):
+            raise Exception("Failed to download file.")
+            
+        await edit_message(progress_msg, "⚡ <b>Uploading renamed file to Telegram...</b>")
+        
+        thumb_path = f"thumbnails/{user_id}.jpg"
+        has_thumb = os.path.exists(thumb_path)
+        
+        custom_caption = f"<b>File Name:</b> <code>{new_name}</code>"
+        if user_caption := Config.get_all().get("LEECH_CAPTION"):
+            try:
+                custom_caption = user_caption.format(filename=new_name)
+            except Exception:
+                pass
+            
+        last_up_edit = 0
+
+        async def upload_progress(current, total):
+            nonlocal last_up_edit
+            now = time.time()
+            if now - last_up_edit < 4 and current < total:
+                return
+            last_up_edit = now
+            try:
+                pct = (current * 100) / total if total else 0
+                await edit_message(
+                    progress_msg, 
+                    f"⚡ <b>Uploading renamed file to Telegram...</b>\n"
+                    f"Progress: <code>{pct:.1f}%</code> of {get_readable_file_size(total)}"
+                )
+            except Exception:
+                pass
+
+        # Extract duration if video or audio
+        duration = 0
+        if upload_type in ["video", "audio"]:
+            try:
+                from hachoir.metadata import extractMetadata
+                from hachoir.parser import createParser
+                metadata = extractMetadata(createParser(local_path))
+                if metadata and metadata.has("duration"):
+                    duration = metadata.get('duration').seconds
+            except Exception:
+                pass
+
+        if upload_type == "video":
+            await client.send_video(
+                chat_id=media_msg.chat.id,
+                video=local_path,
+                caption=custom_caption,
+                thumb=thumb_path if has_thumb else None,
+                supports_streaming=True,
+                duration=duration,
+                reply_to_message_id=media_msg.id,
+                progress=upload_progress
+            )
+        elif upload_type == "audio":
+            await client.send_audio(
+                chat_id=media_msg.chat.id,
+                audio=local_path,
+                caption=custom_caption,
+                thumb=thumb_path if has_thumb else None,
+                duration=duration,
+                reply_to_message_id=media_msg.id,
+                progress=upload_progress
+            )
+        else:
+            await client.send_document(
+                chat_id=media_msg.chat.id,
+                document=local_path,
+                caption=custom_caption,
+                thumb=thumb_path if has_thumb else None,
+                reply_to_message_id=media_msg.id,
+                progress=upload_progress
             )
             
-            if not local_path or not os.path.exists(local_path):
-                raise Exception("Failed to download file.")
-                
-            await edit_message(progress_msg, "⚡ <b>Uploading renamed file to Telegram...</b>")
+        await delete_message(progress_msg)
+        
+        if os.path.exists(local_path):
+            os.remove(local_path)
             
-            thumb_path = f"thumbnails/{user_id}.jpg"
-            has_thumb = os.path.exists(thumb_path)
-            
-            custom_caption = f"<b>File Name:</b> <code>{new_name}</code>"
-            if user_caption := Config.get_all().get("LEECH_CAPTION"):
-                try:
-                    custom_caption = user_caption.format(filename=new_name)
-                except Exception:
-                    pass
-                
-            last_up_edit = 0
-
-            async def upload_progress(current, total):
-                nonlocal last_up_edit
-                now = time.time()
-                if now - last_up_edit < 4 and current < total:
-                    return
-                last_up_edit = now
-                try:
-                    pct = (current * 100) / total if total else 0
-                    await edit_message(
-                        progress_msg, 
-                        f"⚡ <b>Uploading renamed file to Telegram...</b>\n"
-                        f"Progress: <code>{pct:.1f}%</code> of {get_readable_file_size(total)}"
-                    )
-                except Exception:
-                    pass
-
-            # Extract duration if video or audio
-            duration = 0
-            if upload_type in ["video", "audio"]:
-                try:
-                    from hachoir.metadata import extractMetadata
-                    from hachoir.parser import createParser
-                    metadata = extractMetadata(createParser(local_path))
-                    if metadata and metadata.has("duration"):
-                        duration = metadata.get('duration').seconds
-                except Exception:
-                    pass
-
-            if upload_type == "video":
-                await client.send_video(
-                    chat_id=media_msg.chat.id,
-                    video=local_path,
-                    caption=custom_caption,
-                    thumb=thumb_path if has_thumb else None,
-                    supports_streaming=True,
-                    duration=duration,
-                    reply_to_message_id=media_msg.id,
-                    progress=upload_progress
-                )
-            elif upload_type == "audio":
-                await client.send_audio(
-                    chat_id=media_msg.chat.id,
-                    audio=local_path,
-                    caption=custom_caption,
-                    thumb=thumb_path if has_thumb else None,
-                    duration=duration,
-                    reply_to_message_id=media_msg.id,
-                    progress=upload_progress
-                )
-            else:
-                await client.send_document(
-                    chat_id=media_msg.chat.id,
-                    document=local_path,
-                    caption=custom_caption,
-                    thumb=thumb_path if has_thumb else None,
-                    reply_to_message_id=media_msg.id,
-                    progress=upload_progress
-                )
-                
-            await delete_message(progress_msg)
-            
-            if os.path.exists(local_path):
-                os.remove(local_path)
-                
-            user_media_to_rename.pop(user_id, None)
-            user_rename_preferences.pop(user_id, None)
-            
-        except Exception as e:
-            LOGGER.error(f"Error renaming file: {e}")
-            await edit_message(progress_msg, f"✖️ <b>Failed to rename file. Error:</b> <code>{str(e)}</code>")
-            if 'local_path' in locals() and os.path.exists(local_path):
-                os.remove(local_path)
+        user_media_to_rename.pop(user_id, None)
+        user_rename_preferences.pop(user_id, None)
+        
+    except Exception as e:
+        LOGGER.error(f"Error renaming file: {e}")
+        await edit_message(progress_msg, f"✖️ <b>Failed to rename file. Error:</b> <code>{str(e)}</code>")
+        if 'local_path' in locals() and os.path.exists(local_path):
+            os.remove(local_path)
 
 async def reply_listener(client, message):
     if message.reply_to_message and message.reply_to_message.id in pending_replies:
@@ -377,7 +386,11 @@ async def rename_force_reply_handler(client, message):
     if not reply_message or not reply_message.reply_markup or not isinstance(reply_message.reply_markup, ForceReply):
         return
         
-    if "Please enter the new filename" not in reply_message.text:
+    if not reply_message.text or "Please enter the new filename" not in reply_message.text:
+        return
+
+    if not message.text:
+        await send_message(message, "Please send a text filename, not media.")
         return
         
     new_name = message.text.strip()
@@ -386,15 +399,16 @@ async def rename_force_reply_handler(client, message):
     media_msg = reply_message.reply_to_message
     if not media_msg:
         media_msg = user_media_to_rename.get(user_id)
-        if not media_msg:
-            await send_message(message, "Expired. Send the file again.")
-            return
+    if not media_msg:
+        await send_message(message, "Expired. Send the file again.")
+        return
 
     media = get_media(media_msg)
     if not media:
+        await send_message(message, "Could not find media in the original message.")
         return
         
-    # Infer extension
+    # Infer extension if user didn't provide one
     if "." not in new_name:
         extn = "bin"
         if hasattr(media, "file_name") and media.file_name and "." in media.file_name:
@@ -420,9 +434,9 @@ async def rename_force_reply_handler(client, message):
     elif media_type == "audio":
         buttons.append([InlineKeyboardButton("🎵 Audio", callback_data=f"ren_up_audio_{user_id}")])
         
-    await send_message(
-        message, 
-        f"**Select the output file type:**\n\n**File Name:** `{new_name}`",
+    await client.send_message(
+        chat_id=message.chat.id,
+        text=f"**Select the output file type:**\n\n**File Name:** `{new_name}`",
         reply_markup=InlineKeyboardMarkup(buttons),
         reply_to_message_id=media_msg.id
     )
