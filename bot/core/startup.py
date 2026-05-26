@@ -219,11 +219,18 @@ async def save_settings():
     if await database.db.settings.qbittorrent.find_one({"_id": TgClient.ID}) is None:
         await database.save_qbit_settings()
     if await database.db.settings.nzb.find_one({"_id": TgClient.ID}) is None:
-        async with aiopen("sabnzbd/SABnzbd.ini", "rb+") as pf:
-            nzb_conf = await pf.read()
-        await database.db.settings.nzb.update_one(
-            {"_id": TgClient.ID}, {"$set": {"SABnzbd__ini": nzb_conf}}, upsert=True
-        )
+        is_exist = False
+        for _ in range(15):
+            if await aiopath.exists("sabnzbd/SABnzbd.ini"):
+                is_exist = True
+                break
+            await sleep(1)
+        if is_exist:
+            async with aiopen("sabnzbd/SABnzbd.ini", "rb+") as pf:
+                nzb_conf = await pf.read()
+            await database.db.settings.nzb.update_one(
+                {"_id": TgClient.ID}, {"$set": {"SABnzbd__ini": nzb_conf}}, upsert=True
+            )
 
 
 async def update_variables():
