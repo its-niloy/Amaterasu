@@ -404,12 +404,17 @@ async def watch_media(chat_id: str, message_id: int, request: Request, filename:
         if not filename:
             filename = getattr(media, "file_name", None) or f"Stream_{message_id}.bin"
             
+        file_size = getattr(media, "file_size", 0) or 0
+        from bot.helper.ext_utils.bot_utils import get_readable_file_size
+        readable_size = get_readable_file_size(file_size)
+            
         from urllib.parse import quote
         stream_url = f"/stream/{chat_id}/{message_id}/{quote(filename)}?hash={secure_hash}"
         
         return templates.TemplateResponse(request, "player.html", {
-            "filename": filename,
-            "stream_url": stream_url
+            "file_name": filename,
+            "file_url": stream_url,
+            "file_size": readable_size
         })
     finally:
         TgClient.stream_loads[client_id] -= 1
