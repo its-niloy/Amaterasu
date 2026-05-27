@@ -218,7 +218,7 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
         status_dict[sid]["page_no"] = page_no
     start_position = (page_no - 1) * STATUS_LIMIT
 
-    msg = "<b>❖ DOWNLOAD TELEMETRY</b>\n<pre>\n"
+    msg = "<b>❖ DOWNLOAD TELEMETRY</b>\n\n"
 
     for index, task in enumerate(
         tasks[start_position : STATUS_LIMIT + start_position], start=1
@@ -231,7 +231,7 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
             tstatus = task.status()
             
         task_name = escape(task.name())
-        msg += f"┌─ [ {task_name} ]"
+        msg += f"<code>┌─ [ {task_name} ]"
         
         if getattr(task.listener, "subname", False):
             sub_name = escape(task.listener.subname)
@@ -282,20 +282,20 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
             msg += f"\n├─ {'Status':<9}: {tstatus}"
             msg += f"\n├─ {'Size':<9}: {task.size()}"
             
-        msg += f"\n├─ {'Engine':<9}: {task.engine}"
-        msg += f"\n├─ {'Mode':<9}: {task.listener.mode[0]} / {task.listener.mode[1]}"
+        msg += f"\n├─ {'Engine':<9}: {task.engine}</code>"
+        msg += f"<code>\n├─ {'Mode':<9}: </code>{task.listener.mode[0]} / {task.listener.mode[1]}"
         
         from ..telegram_helper.bot_commands import BotCommands
-        msg += f"\n├─ {'User':<9}: {_user_mention}"
-        msg += f"\n└─ {'Stop':<9}: /{BotCommands.CancelTaskCommand[1]}_{task.gid()}\n\n"
+        msg += f"<code>\n├─ {'User':<9}: </code>{_user_mention}"
+        msg += f"<code>\n└─ {'Stop':<9}: </code>/{BotCommands.CancelTaskCommand[1]}_{task.gid()}\n\n"
 
     if tasks_no == 0:
         if status == "All":
             return None, None
         else:
-            msg += f"No Active {status} Tasks!\n\n"
+            msg += f"<code>No Active {status} Tasks!</code>\n\n"
 
-    msg += "</pre>\n<b>❖ SYSTEM METRICS</b>\n<pre>\n"
+    msg += "<b>❖ SYSTEM METRICS</b>\n<pre>\n"
     
     buttons = ButtonMaker()
     if not is_user:
