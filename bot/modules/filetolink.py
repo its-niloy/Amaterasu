@@ -97,10 +97,13 @@ async def process_media_message(client, message, reply_to_msg):
             f"<b>❖ 𝗬𝗼𝘂𝗿 𝗟𝗶𝗻𝗸 𝗚𝗲𝗻𝗲𝗿𝗮𝘁𝗲𝗱 !</b>\n"
             f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
             f"├ 📂 <b>Name :</b> <code>{filename}</code>\n"
+            f"│\n"
             f"├ 📦 <b>Size :</b> <code>{readable_size}</code>\n"
+            f"│\n"
         )
         if stream_link:
             caption += f"├ 📥 <b>DL   :</b> <code>{download_link}</code>\n"
+            caption += f"│\n"
             caption += f"└ 🖥 <b>Play :</b> <code>{stream_link}</code>"
         else:
             caption += f"└ 📥 <b>DL   :</b> <code>{download_link}</code>"
@@ -161,10 +164,13 @@ async def link_command_handler(client, message):
                     f"<b>❖ 𝗕𝗮𝘁𝗰𝗵 𝗙𝗶𝗹𝗲 {processed + 1}</b>\n"
                     f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
                     f"├ 📂 <b>Name :</b> <code>{filename}</code>\n"
+                    f"│\n"
                     f"├ 📦 <b>Size :</b> <code>{readable_size}</code>\n"
+                    f"│\n"
                 )
                 if stream_link:
                     caption += f"├ 📥 <b>DL   :</b> <code>{download_link}</code>\n"
+                    caption += f"│\n"
                     caption += f"└ 🖥 <b>Play :</b> <code>{stream_link}</code>"
                 else:
                     caption += f"└ 📥 <b>DL   :</b> <code>{download_link}</code>"
