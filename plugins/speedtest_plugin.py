@@ -69,7 +69,7 @@ async def speedtest_command(client: Client, message: Message):
         return
     speed_results.results.share()
     result = speed_results.results.dict()
-    string_speed = f"""<b>◈ SPEEDTEST INFO</b>
+    string_speed = f"""<b>❖ SPEEDTEST INFO</b>
 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
 ├ Upload     : <code>⇅ {get_readable_file_size(result['upload'] / 8)}/s</code>
 ├ Download   : <code>⇅ {get_readable_file_size(result['download'] / 8)}/s</code>
@@ -78,7 +78,7 @@ async def speedtest_command(client: Client, message: Message):
 ├ Data Sent  : <code>{get_readable_file_size(int(result['bytes_sent']))}</code>
 └ Data Recv  : <code>{get_readable_file_size(int(result['bytes_received']))}</code>
 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
-<b>◈ SERVER</b>
+<b>❖ SERVER</b>
 ├ Name       : <code>{result['server']['name']}</code>
 ├ Country    : <code>{result['server']['country']}, {result['server']['cc']}</code>
 ├ Sponsor    : <code>{result['server']['sponsor']}</code>

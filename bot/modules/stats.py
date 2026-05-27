@@ -65,31 +65,31 @@ async def get_stats(event, key="home"):
     btns = ButtonMaker()
     if key == "home":
         btns = ButtonMaker()
-        btns.data_button("◈  Bot", f"stats {user_id} stbot")
-        btns.data_button("◈  OS", f"stats {user_id} stsys")
-        btns.data_button("◈  Repo", f"stats {user_id} strepo")
-        btns.data_button("◈  Pkgs", f"stats {user_id} stpkgs")
-        btns.data_button("◈  Limits", f"stats {user_id} tlimits")
-        btns.data_button("◈  Sys", f"stats {user_id} systasks")
-        msg = "<b>◈ SYSTEM DASHBOARD</b>"
+        btns.data_button("❖  Bot", f"stats {user_id} stbot")
+        btns.data_button("❖  OS", f"stats {user_id} stsys")
+        btns.data_button("❖  Repo", f"stats {user_id} strepo")
+        btns.data_button("❖  Pkgs", f"stats {user_id} stpkgs")
+        btns.data_button("❖  Limits", f"stats {user_id} tlimits")
+        btns.data_button("❖  Sys", f"stats {user_id} systasks")
+        msg = "<b>❖ SYSTEM DASHBOARD</b>"
     elif key == "stbot":
         total, used, free, disk = disk_usage("/")
         swap = swap_memory()
         memory = virtual_memory()
         disk_io = disk_io_counters()
-        msg = f"""<b>◈ SYSTEM METRICS</b>
+        msg = f"""<b>❖ SYSTEM METRICS</b>
 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
 └ Uptime     : <i>◷ {get_readable_time(time() - bot_start_time)}</i>
 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
-<b>◈ MEMORY</b>
+<b>❖ MEMORY</b>
 ├ Usage      : {get_progress_bar_string(memory.percent)} <code>{memory.percent}%</code>
 └              <code>{get_readable_file_size(memory.used)} used / {get_readable_file_size(memory.total)} total</code>
 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
-<b>◈ SWAP</b>
+<b>❖ SWAP</b>
 ├ Usage      : {get_progress_bar_string(swap.percent)} <code>{swap.percent}%</code>
 └              <code>{get_readable_file_size(swap.used)} used / {get_readable_file_size(swap.total)} total</code>
 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
-<b>◈ DISK</b>
+<b>❖ DISK</b>
 ├ Usage      : {get_progress_bar_string(disk)} <code>{disk}%</code>
 ├ Read       : <code>{f"{get_readable_file_size(disk_io.read_bytes)} ({get_readable_time(disk_io.read_time / 1000)})" if disk_io else "Access Denied"}</code>
 ├ Write      : <code>{f"{get_readable_file_size(disk_io.write_bytes)} ({get_readable_time(disk_io.write_time / 1000)})" if disk_io else "Access Denied"}</code>
@@ -97,20 +97,20 @@ async def get_stats(event, key="home"):
 """
     elif key == "stsys":
         cpu_usage = cpu_percent(interval=0.5)
-        msg = f"""<b>◈ OS SYSTEM</b>
+        msg = f"""<b>❖ OS SYSTEM</b>
 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
 ├ Uptime     : <i>◷ {get_readable_time(time() - boot_time())}</i>
 ├ Version    : <code>{version()}</code>
 └ Arch       : <code>{platform()}</code>
 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
-<b>◈ NETWORK</b>
+<b>❖ NETWORK</b>
 ├ Upload     : <code>⇅ {get_readable_file_size(net_io_counters().bytes_sent)}</code>
 ├ Download   : <code>⇅ {get_readable_file_size(net_io_counters().bytes_recv)}</code>
 ├ Pkts Sent  : <code>{str(net_io_counters().packets_sent)[:-3]}k</code>
 ├ Pkts Recv  : <code>{str(net_io_counters().packets_recv)[:-3]}k</code>
 └ Total I/O  : <code>{get_readable_file_size(net_io_counters().bytes_recv + net_io_counters().bytes_sent)}</code>
 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
-<b>◈ CPU</b>
+<b>❖ CPU</b>
 ├ Usage      : {get_progress_bar_string(cpu_usage)} <code>{cpu_usage}%</code>
 ├ Freq       : <code>{f"{cpu_freq().current / 1000:.2f} GHz" if cpu_freq() else "Access Denied"}</code>
 ├ Avg Load   : <code>{"%, ".join(str(round((x / cpu_count() * 100), 2)) for x in getloadavg())}%</code>
@@ -137,7 +137,7 @@ async def get_stats(event, key="home"):
                 True,
             )
         )[0]
-        msg = f"""<b>◈ REPO METRICS</b>
+        msg = f"""<b>❖ REPO METRICS</b>
 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
 ├ Updated    : <code>{last_commit}</code>
 ├ Current    : <code>{get_version()}</code>
@@ -147,7 +147,7 @@ async def get_stats(event, key="home"):
 """
     elif key == "stpkgs":
         ver = bot_cache.get("eng_versions", {})
-        msg = f"""<b>◈ PACKAGES</b>
+        msg = f"""<b>❖ PACKAGES</b>
 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
 ├ Python     : <code>{ver.get("python", "N/A")}</code>
 ├ Aria2      : <code>{ver.get("aria2", "N/A")}</code>
@@ -163,7 +163,7 @@ async def get_stats(event, key="home"):
 └ Mega CMD   : <code>{ver.get("mega", "N/A")}</code>
 """
     elif key == "tlimits":
-        msg = f"""<b>◈ TASK LIMITS</b>
+        msg = f"""<b>❖ TASK LIMITS</b>
 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
 ├ Direct     : <code>{Config.DIRECT_LIMIT or "∞"} GB</code>
 ├ Torrent    : <code>{Config.TORRENT_LIMIT or "∞"} GB</code>
@@ -180,7 +180,7 @@ async def get_stats(event, key="home"):
 ├ Extract    : <code>{Config.EXTRACT_LIMIT or "∞"} GB</code>
 └ Threshold  : <code>{Config.STORAGE_LIMIT or "∞"} GB</code>
 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
-<b>◈ GLOBAL LIMITS</b>
+<b>❖ GLOBAL LIMITS</b>
 ├ Token Val  : <code>{get_readable_time(Config.VERIFY_TIMEOUT) if Config.VERIFY_TIMEOUT else "Disabled"}</code>
 ├ User Time  : <code>{Config.USER_TIME_INTERVAL or "0"}s</code>
 ├ User Tasks : <code>{Config.USER_MAX_TASKS or "∞"}</code>
@@ -211,7 +211,7 @@ async def get_stats(event, key="home"):
         except Exception:
             processes = []
 
-        msg = "<b>◈ SYSTEM TASKS</b>\n┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
+        msg = "<b>❖ SYSTEM TASKS</b>\n┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
 
         if processes:
             for i, proc in enumerate(processes, 1):

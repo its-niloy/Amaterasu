@@ -232,12 +232,12 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
         if len(task_name) > 28:
             task_name = task_name[:28]
             
-        msg += f"<b>◈ {escape(task_name)}</b>"
+        msg += f"<b>❖ {escape(task_name)}</b>"
         if task.listener.subname:
             sub_name = task.listener.subname
             if len(sub_name) > 28:
                 sub_name = sub_name[:28]
-            msg += f"\n<b>◈ {escape(sub_name)}</b>"
+            msg += f"\n<b>❖ {escape(sub_name)}</b>"
             
         msg += "\n┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄"
 
@@ -299,7 +299,7 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
         else:
             msg = f"No Active {status} Tasks!\n\n"
 
-    msg += "<b>◈ SYSTEM METRICS</b>\n┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄"
+    msg += "<b>❖ SYSTEM METRICS</b>\n┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄"
     buttons = ButtonMaker()
     if not is_user:
         buttons.data_button("📜  TStats", f"status {sid} ov", position="header")

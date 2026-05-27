@@ -38,16 +38,16 @@ async def autorename_command(client, message):
         user_media_to_rename[user_id] = media_msg
         user_rename_preferences[user_id] = new_name
         
-        buttons = [[InlineKeyboardButton("◈ Document", callback_data=f"ren_up_document_{user_id}")]]
+        buttons = [[InlineKeyboardButton("❖ Document", callback_data=f"ren_up_document_{user_id}")]]
         media_type = type(media).__name__.lower()
         if media_type in ["video", "document"]:
-            buttons.append([InlineKeyboardButton("◈ Video", callback_data=f"ren_up_video_{user_id}")])
+            buttons.append([InlineKeyboardButton("❖ Video", callback_data=f"ren_up_video_{user_id}")])
         elif media_type == "audio":
-            buttons.append([InlineKeyboardButton("◈ Audio", callback_data=f"ren_up_audio_{user_id}")])
+            buttons.append([InlineKeyboardButton("❖ Audio", callback_data=f"ren_up_audio_{user_id}")])
             
         await client.send_message(
             chat_id=message.chat.id,
-            text=f"<b>◈ AUTO-RENAME APPLIED</b>\n┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n├ Name : <code>{new_name}</code>\n└ Info : Select the output file type.",
+            text=f"<b>❖ AUTO-RENAME APPLIED</b>\n┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n├ Name : <code>{new_name}</code>\n└ Info : Select the output file type.",
             reply_markup=InlineKeyboardMarkup(buttons),
             reply_to_message_id=media_msg.id
         )
@@ -57,7 +57,7 @@ async def autorename_command(client, message):
     if len(command_parts) < 2 or not command_parts[1].strip():
         # User just typed /autorename without arguments
         msg = (
-            "<b>◈ AUTO-RENAME CONFIG</b>\n"
+            "<b>❖ AUTO-RENAME CONFIG</b>\n"
             "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
             f"├ Template : <code>{current_template or 'None'}</code>\n"
             "├ Set CMD  : <code>/autorename [Template]</code>\n"
@@ -80,7 +80,7 @@ async def autorename_command(client, message):
 
     await send_message(
         message,
-        f"<b>◈ AUTO-RENAME SETTINGS</b>\n"
+        f"<b>❖ AUTO-RENAME SETTINGS</b>\n"
         f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
         f"├ Status   : <code>Template Saved Successfully!</code>\n"
         f"├ Template : <code>{format_template}</code>\n"
