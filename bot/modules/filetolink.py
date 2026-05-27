@@ -100,10 +100,10 @@ async def process_media_message(client, message, reply_to_msg):
             f"├ 📦 <b>Size :</b> <code>{readable_size}</code>\n"
         )
         if stream_link:
-            caption += f"├ 📥 <b>DL   :</b> <a href=\"{download_link}\">Download Link</a>\n"
-            caption += f"└ 🖥 <b>Play :</b> <a href=\"{stream_link}\">Stream Link</a>"
+            caption += f"├ 📥 <b>DL   :</b> <code>{download_link}</code>\n"
+            caption += f"└ 🖥 <b>Play :</b> <code>{stream_link}</code>"
         else:
-            caption += f"└ 📥 <b>DL   :</b> <a href=\"{download_link}\">Download Link</a>"
+            caption += f"└ 📥 <b>DL   :</b> <code>{download_link}</code>"
         
         await edit_message(status_msg, caption, markup)
     except Exception as e:
@@ -164,10 +164,10 @@ async def link_command_handler(client, message):
                     f"├ 📦 <b>Size :</b> <code>{readable_size}</code>\n"
                 )
                 if stream_link:
-                    caption += f"├ 📥 <b>DL   :</b> <a href=\"{download_link}\">Download Link</a>\n"
-                    caption += f"└ 🖥 <b>Play :</b> <a href=\"{stream_link}\">Stream Link</a>"
+                    caption += f"├ 📥 <b>DL   :</b> <code>{download_link}</code>\n"
+                    caption += f"└ 🖥 <b>Play :</b> <code>{stream_link}</code>"
                 else:
-                    caption += f"└ 📥 <b>DL   :</b> <a href=\"{download_link}\">Download Link</a>"
+                    caption += f"└ 📥 <b>DL   :</b> <code>{download_link}</code>"
                 await send_message(message, caption, markup)
                 processed += 1
             except Exception as e:
