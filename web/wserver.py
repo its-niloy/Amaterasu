@@ -490,6 +490,8 @@ async def stream_media(chat_id: str, message_id: int, request: Request, filename
         if disposition not in ["inline", "attachment"]:
             disposition = "inline"
 
+        from urllib.parse import quote
+        encoded_filename = quote(filename)
         headers = {
             "Accept-Ranges": "bytes",
             "Content-Type": mime_type,
@@ -497,7 +499,7 @@ async def stream_media(chat_id: str, message_id: int, request: Request, filename
             "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
             "Access-Control-Allow-Headers": "Range, Content-Type, *",
             "Access-Control-Expose-Headers": "Content-Length, Content-Range, Content-Disposition",
-            "Content-Disposition": f'{disposition}; filename="{filename}"',
+            "Content-Disposition": f"{disposition}; filename*=UTF-8''{encoded_filename}",
             "X-Content-Type-Options": "nosniff",
         }
         
