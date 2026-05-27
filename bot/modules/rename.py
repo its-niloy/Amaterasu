@@ -77,20 +77,20 @@ async def prompt_rename_choice(client, message, media_msg):
     file_size = get_readable_file_size(getattr(media, "file_size", 0) or 0)
     
     caption = (
-        f"✏️ <b>Rename Mode Active!</b>\n\n"
-        f"<b>Original File:</b> <code>{file_name}</code>\n"
-        f"<b>Size:</b> {file_size}\n\n"
-        f"Choose an option to rename this file:"
+        f"<b>◈ RENAME MODE ACTIVE</b>\n"
+        f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
+        f"├ Name : <code>{file_name}</code>\n"
+        f"└ Size : <code>{file_size}</code>"
     )
     
     buttons = [
         [
-            InlineKeyboardButton("✏️ Rename", callback_data=f"ren_choice_ren_{user_id}"),
-            InlineKeyboardButton("🤖 Auto-Rename", callback_data=f"ren_choice_auto_{user_id}")
+            InlineKeyboardButton("◈ Rename", callback_data=f"ren_choice_ren_{user_id}"),
+            InlineKeyboardButton("◈ Auto-Rename", callback_data=f"ren_choice_auto_{user_id}")
         ],
         [
-            InlineKeyboardButton("ℹ️ File Info", callback_data=f"ren_choice_info_{user_id}"),
-            InlineKeyboardButton("✖️ Cancel", callback_data=f"ren_choice_cancel_{user_id}")
+            InlineKeyboardButton("◈ File Info", callback_data=f"ren_choice_info_{user_id}"),
+            InlineKeyboardButton("✕ Cancel", callback_data=f"ren_choice_cancel_{user_id}")
         ]
     ]
     
@@ -106,12 +106,13 @@ async def rename_command_handler(client, message):
     is_active = toggle_rename_mode(user_id)
     if is_active:
         msg = (
-            "✏️ <b>Rename Mode has been toggled ON!</b>\n\n"
-            "• Send any media file in PM to rename it.\n"
-            "• Initiate any leech task (e.g. `/leech`) to be prompted to rename the output before proceeding."
+            "<b>◈ RENAME MODE : ON</b>\n"
+            "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
+            "├ Info : Send any media file in PM to rename it.\n"
+            "└ Note : Initiate any leech task to be prompted to rename the output."
         )
     else:
-        msg = "✖️ <b>Rename Mode has been toggled OFF!</b>"
+        msg = "<b>◈ RENAME MODE : OFF</b>"
         
     await send_message(message, msg)
 
@@ -127,19 +128,19 @@ async def rename_private_media_handler(client, message):
 async def prompt_leech_rename(client, message) -> str:
     prompt = await send_message(
         message,
-        "✏️ <b>Rename Mode is active!</b>\n\n"
-        "Reply to this message with the **new filename** (with extension) for this leech task, "
-        "or click the button below to use the original filename.",
+        "<b>◈ LEECH RENAME ACTIVE</b>\n"
+        "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
+        "└ Info : Reply with the new filename (with extension) or click the button below.",
         reply_to_message_id=message.id
     )
     
     await edit_message(
         prompt,
-        "✏️ <b>Rename Mode is active!</b>\n\n"
-        "Reply to this message with the **new filename** (with extension) for this leech task, "
-        "or click the button below to use the original filename.",
+        "<b>◈ LEECH RENAME ACTIVE</b>\n"
+        "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
+        "└ Info : Reply with the new filename (with extension) or click the button below.",
         InlineKeyboardMarkup([
-            [InlineKeyboardButton("Use Original Name", callback_data=f"leech_orig_{prompt.id}")]
+            [InlineKeyboardButton("◈ Use Original Name", callback_data=f"leech_orig_{prompt.id}")]
         ])
     )
     
@@ -212,17 +213,18 @@ async def rename_callback_handler(client, query):
         unique_id = getattr(media, "file_unique_id", "None")
         
         info_text = (
-            f"ℹ️ <b>File Metadata Details</b>\n\n"
-            f"• <b>Type</b>: {media_type.capitalize()}\n"
-            f"• <b>Name</b>: <code>{file_name}</code>\n"
-            f"• <b>Mime</b>: <code>{mime_type}</code>\n"
-            f"• <b>Size</b>: {file_size}\n"
-            f"• <b>Unique ID</b>: <code>{unique_id}</code>"
+            f"<b>◈ FILE METADATA</b>\n"
+            f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
+            f"├ Type : <code>{media_type.capitalize()}</code>\n"
+            f"├ Name : <code>{file_name}</code>\n"
+            f"├ Mime : <code>{mime_type}</code>\n"
+            f"├ Size : <code>{file_size}</code>\n"
+            f"└ U.ID : <code>{unique_id}</code>"
         )
         
         buttons = [
-            [InlineKeyboardButton("✏️ Rename", callback_data=f"ren_choice_ren_{user_id}")],
-            [InlineKeyboardButton("✖️ Cancel", callback_data=f"ren_choice_cancel_{user_id}")]
+            [InlineKeyboardButton("◈ Rename", callback_data=f"ren_choice_ren_{user_id}")],
+            [InlineKeyboardButton("✕ Cancel", callback_data=f"ren_choice_cancel_{user_id}")]
         ]
         
         await edit_message(query.message, info_text, InlineKeyboardMarkup(buttons))
@@ -239,7 +241,7 @@ async def rename_callback_handler(client, query):
         
         await client.send_message(
             chat_id=query.message.chat.id,
-            text="✏️ **Please enter the new filename:**\n\n_Reply to this message with the new name._",
+            text="<b>◈ ENTER NEW FILENAME</b>\n┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n└ Info : <i>Reply to this message with the new name.</i>",
             reply_to_message_id=media_msg.id,
             reply_markup=ForceReply(True)
         )
@@ -271,16 +273,16 @@ async def rename_callback_handler(client, query):
         new_name = apply_autorename_template(file_name, current_template)
         user_rename_preferences[user_id] = new_name
         
-        buttons = [[InlineKeyboardButton("📁 Document", callback_data=f"ren_up_document_{user_id}")]]
+        buttons = [[InlineKeyboardButton("◈ Document", callback_data=f"ren_up_document_{user_id}")]]
         media_type = type(media).__name__.lower()
         if media_type in ["video", "document"]:
-            buttons.append([InlineKeyboardButton("🎥 Video", callback_data=f"ren_up_video_{user_id}")])
+            buttons.append([InlineKeyboardButton("◈ Video", callback_data=f"ren_up_video_{user_id}")])
         elif media_type == "audio":
-            buttons.append([InlineKeyboardButton("🎵 Audio", callback_data=f"ren_up_audio_{user_id}")])
+            buttons.append([InlineKeyboardButton("◈ Audio", callback_data=f"ren_up_audio_{user_id}")])
             
         await client.send_message(
             chat_id=query.message.chat.id,
-            text=f"**Auto-Rename Applied!**\n\n**New File Name:** `{new_name}`\n\n**Select the output file type:**",
+            text=f"<b>◈ AUTO-RENAME APPLIED</b>\n┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n├ Name : <code>{new_name}</code>\n└ Info : Select the output file type.",
             reply_markup=InlineKeyboardMarkup(buttons),
             reply_to_message_id=media_msg.id
         )
@@ -295,7 +297,7 @@ async def _handle_upload(client, query, user_id, upload_type):
         return
         
     await query.answer()
-    progress_msg = await edit_message(query.message, "⏳ <b>Downloading file from Telegram...</b>")
+    progress_msg = await edit_message(query.message, "<i>◷ Downloading file from Telegram...</i>")
     
     try:
         import time
@@ -311,8 +313,9 @@ async def _handle_upload(client, query, user_id, upload_type):
                 pct = (current * 100) / total if total else 0
                 await edit_message(
                     progress_msg, 
-                    f"⏳ <b>Downloading file from Telegram...</b>\n"
-                    f"Progress: <code>{pct:.1f}%</code> of {get_readable_file_size(total)}"
+                    f"<b>◈ TELEGRAM DOWNLOAD</b>\n"
+                    f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
+                    f"└ Prog : <code>{pct:.1f}%</code> of <code>{get_readable_file_size(total)}</code>"
                 )
             except Exception:
                 pass
@@ -329,7 +332,7 @@ async def _handle_upload(client, query, user_id, upload_type):
         if not local_path or not os.path.exists(local_path):
             raise Exception("Failed to download file.")
             
-        await edit_message(progress_msg, "⚡ <b>Uploading renamed file to Telegram...</b>")
+        await edit_message(progress_msg, "<i>◷ Uploading renamed file to Telegram...</i>")
         
         thumb_path = f"thumbnails/{user_id}.jpg"
         has_thumb = os.path.exists(thumb_path)
@@ -353,8 +356,9 @@ async def _handle_upload(client, query, user_id, upload_type):
                 pct = (current * 100) / total if total else 0
                 await edit_message(
                     progress_msg, 
-                    f"⚡ <b>Uploading renamed file to Telegram...</b>\n"
-                    f"Progress: <code>{pct:.1f}%</code> of {get_readable_file_size(total)}"
+                    f"<b>◈ TELEGRAM UPLOAD</b>\n"
+                    f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
+                    f"└ Prog : <code>{pct:.1f}%</code> of <code>{get_readable_file_size(total)}</code>"
                 )
             except Exception:
                 pass
@@ -409,7 +413,7 @@ async def _handle_upload(client, query, user_id, upload_type):
             
     except Exception as e:
         LOGGER.error(f"Error renaming file: {e}")
-        await edit_message(progress_msg, f"✖️ <b>Failed to rename file. Error:</b> <code>{str(e)}</code>")
+        await edit_message(progress_msg, f"<b>⚑ ERROR:</b> <i>Failed to rename file. {str(e)}</i>")
         if 'local_path' in locals() and os.path.exists(local_path):
             os.remove(local_path)
 
@@ -465,17 +469,17 @@ async def rename_force_reply_handler(client, message):
     await delete_message(reply_message)
     await delete_message(message)
     
-    buttons = [[InlineKeyboardButton("📁 Document", callback_data=f"ren_up_document_{user_id}")]]
+    buttons = [[InlineKeyboardButton("◈ Document", callback_data=f"ren_up_document_{user_id}")]]
     
     media_type = type(media).__name__.lower()
     if media_type in ["video", "document"]:
-        buttons.append([InlineKeyboardButton("🎥 Video", callback_data=f"ren_up_video_{user_id}")])
+        buttons.append([InlineKeyboardButton("◈ Video", callback_data=f"ren_up_video_{user_id}")])
     elif media_type == "audio":
-        buttons.append([InlineKeyboardButton("🎵 Audio", callback_data=f"ren_up_audio_{user_id}")])
+        buttons.append([InlineKeyboardButton("◈ Audio", callback_data=f"ren_up_audio_{user_id}")])
         
     await client.send_message(
         chat_id=message.chat.id,
-        text=f"**Select the output file type:**\n\n**File Name:** `{new_name}`",
+        text=f"<b>◈ OUTPUT TYPE SELECT</b>\n┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n├ Name : <code>{new_name}</code>\n└ Info : Select the output file type.",
         reply_markup=InlineKeyboardMarkup(buttons),
         reply_to_message_id=media_msg.id
     )

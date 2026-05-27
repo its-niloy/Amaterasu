@@ -40,13 +40,13 @@ async def generate_link_markup(chat_id, message_id, filename, secure_hash=""):
     buttons = []
     if is_streamable(filename):
         buttons.append([
-            InlineKeyboardButton("Stream Online", url=stream_link),
-            InlineKeyboardButton("Direct Download", url=download_link)
+            InlineKeyboardButton("◈ Stream Online", url=stream_link),
+            InlineKeyboardButton("◈ Direct Download", url=download_link)
         ])
     else:
         stream_link = None
         buttons.append([
-            InlineKeyboardButton("Direct Download", url=download_link)
+            InlineKeyboardButton("◈ Direct Download", url=download_link)
         ])
         
     return InlineKeyboardMarkup(buttons), stream_link, download_link
@@ -75,7 +75,7 @@ async def process_media_message(client, message, reply_to_msg):
     file_size = getattr(media, "file_size", 0) or 0
     readable_size = get_readable_file_size(file_size)
     
-    status_msg = await send_message(message, "Processing file... Please wait.")
+    status_msg = await send_message(message, "<i>◷ Processing file... Please wait.</i>")
     
     try:
         if Config.BIN_CHANNEL:
@@ -94,17 +94,19 @@ async def process_media_message(client, message, reply_to_msg):
         markup, stream_link, download_link = await generate_link_markup(chat_id, message_id, filename, secure_hash)
         
         caption = (
-            f"<b>File Name:</b> <code>{filename}</code>\n"
-            f"<b>File Size:</b> {readable_size}\n\n"
-            f"<b>Direct Download Link:</b>\n<code>{download_link}</code>"
+            f"<b>◈ FILE TO LINK</b>\n"
+            f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
+            f"├ Name : <code>{filename}</code>\n"
+            f"├ Size : <code>{readable_size}</code>\n"
+            f"├ DL   : <code>{download_link}</code>"
         )
         if stream_link:
-            caption += f"\n\n<b>Stream Link:</b>\n<code>{stream_link}</code>"
+            caption += f"\n└ Play : <code>{stream_link}</code>"
         
         await edit_message(status_msg, caption, markup)
     except Exception as e:
         LOGGER.error(f"Error in FileToLink processing: {e}")
-        await edit_message(status_msg, f"Failed to generate links. Error: {str(e)}")
+        await edit_message(status_msg, f"<b>⚑ ERROR:</b> <i>Failed to generate links. {str(e)}</i>")
 
 async def link_command_handler(client, message):
     if not Config.BASE_URL:
@@ -123,7 +125,7 @@ async def link_command_handler(client, message):
     if batch_count > 1:
         start_msg_id = message.reply_to_message.id
         chat_id = message.chat.id
-        status_msg = await send_message(message, f"Starting batch processing of {batch_count} files...")
+        status_msg = await send_message(message, f"<i>◷ Starting batch processing of {batch_count} files...</i>")
         
         processed = 0
         failed = 0
@@ -154,19 +156,21 @@ async def link_command_handler(client, message):
                 
                 readable_size = get_readable_file_size(getattr(media, "file_size", 0) or 0)
                 caption = (
-                    f"<b>Batch File {processed + 1}:</b> <code>{filename}</code>\n"
-                    f"<b>Size:</b> {readable_size}\n\n"
-                    f"<b>Download:</b> {download_link}"
+                    f"<b>◈ BATCH FILE {processed + 1}</b>\n"
+                    f"┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
+                    f"├ Name : <code>{filename}</code>\n"
+                    f"├ Size : <code>{readable_size}</code>\n"
+                    f"├ DL   : <code>{download_link}</code>"
                 )
                 if stream_link:
-                    caption += f"\n<b>Stream:</b> {stream_link}"
+                    caption += f"\n└ Play : <code>{stream_link}</code>"
                 await send_message(message, caption, markup)
                 processed += 1
             except Exception as e:
                 LOGGER.error(f"Failed to process batch message {msg_id}: {e}")
                 failed += 1
                 
-        await edit_message(status_msg, f"Batch processing completed!\nProcessed: {processed}\nFailed: {failed}")
+        await edit_message(status_msg, f"<b>◈ BATCH COMPLETED</b>\n┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n├ Processed: <code>{processed}</code>\n└ Failed   : <code>{failed}</code>")
     else:
         await process_media_message(client, message, message.reply_to_message)
 

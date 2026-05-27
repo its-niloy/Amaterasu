@@ -55,7 +55,7 @@ class SpeedtestPlugin(PluginBase):
 
 @new_task
 async def speedtest_command(client: Client, message: Message):
-    speed = await send_message(message, "<i>Initiating Speedtest...</i>")
+    speed = await send_message(message, "<i>◷ Initiating Speedtest...</i>")
     try:
         speed_results = await sync_to_async(Speedtest)
         await sync_to_async(speed_results.get_best_server)
@@ -64,27 +64,27 @@ async def speedtest_command(client: Client, message: Message):
     except ConfigRetrievalError:
         await edit_message(
             speed,
-            "<b>ERROR:</b> <i>Can't connect to Server at the Moment, Try Again Later !</i>",
+            "<b>⚑ ERROR:</b> <i>Can't connect to Server at the Moment, Try Again Later!</i>",
         )
         return
     speed_results.results.share()
     result = speed_results.results.dict()
-    string_speed = f"""
-➲ <b><i>SPEEDTEST INFO</i></b>
-┠ <b>Upload:</b> <code>{get_readable_file_size(result['upload'] / 8)}/s</code>
-┠ <b>Download:</b>  <code>{get_readable_file_size(result['download'] / 8)}/s</code>
-┠ <b>Ping:</b> <code>{result['ping']} ms</code>
-┠ <b>Time:</b> <code>{result['timestamp']}</code>
-┠ <b>Data Sent:</b> <code>{get_readable_file_size(int(result['bytes_sent']))}</code>
-┖ <b>Data Received:</b> <code>{get_readable_file_size(int(result['bytes_received']))}</code>
-
-➲ <b><i>SPEEDTEST SERVER</i></b>
-┠ <b>Name:</b> <code>{result['server']['name']}</code>
-┠ <b>Country:</b> <code>{result['server']['country']}, {result['server']['cc']}</code>
-┠ <b>Sponsor:</b> <code>{result['server']['sponsor']}</code>
-┠ <b>Latency:</b> <code>{result['server']['latency']}</code>
-┠ <b>Latitude:</b> <code>{result['server']['lat']}</code>
-┖ <b>Longitude:</b> <code>{result['server']['lon']}</code>
+    string_speed = f"""<b>◈ SPEEDTEST INFO</b>
+┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+├ Upload     : <code>⇅ {get_readable_file_size(result['upload'] / 8)}/s</code>
+├ Download   : <code>⇅ {get_readable_file_size(result['download'] / 8)}/s</code>
+├ Ping       : <code>◷ {result['ping']} ms</code>
+├ Time       : <code>{result['timestamp']}</code>
+├ Data Sent  : <code>{get_readable_file_size(int(result['bytes_sent']))}</code>
+└ Data Recv  : <code>{get_readable_file_size(int(result['bytes_received']))}</code>
+┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+<b>◈ SERVER</b>
+├ Name       : <code>{result['server']['name']}</code>
+├ Country    : <code>{result['server']['country']}, {result['server']['cc']}</code>
+├ Sponsor    : <code>{result['server']['sponsor']}</code>
+├ Latency    : <code>{result['server']['latency']}</code>
+├ Latitude   : <code>{result['server']['lat']}</code>
+└ Longitude  : <code>{result['server']['lon']}</code>
 """
     try:
         await send_message(message, string_speed, photo=result["share"])
