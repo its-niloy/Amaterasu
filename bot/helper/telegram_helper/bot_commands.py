@@ -54,7 +54,6 @@ class BotCommands:
         "SpeedTest": ["speedtest", "stest"],
         "Telegraph": ["tg", "telegraph"],
         "FileToLink": ["link", "stream", "f2l"],
-        "Rename": ["rename", "renamemode"],
         "AutoRename": ["autorename", "ar"],
     }
 

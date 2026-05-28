@@ -12,26 +12,12 @@ from bot.helper.telegram_helper.filters import CustomFilters
 from bot.helper.telegram_helper.message_utils import send_message, edit_message, delete_message
 from bot.helper.ext_utils.status_utils import get_readable_file_size
 
-# Set to keep track of users who enabled Rename Mode
-RENAME_MODE_USERS = set()
-
 # Dictionary to hold pending text replies for conversations (message_id -> Future)
 pending_replies = {}
 
 # Dictionary to track the original media message when renaming (user_id -> Message)
 user_media_to_rename = {}
 user_rename_preferences = {}
-
-def is_rename_mode(user_id: int) -> bool:
-    return user_id in RENAME_MODE_USERS
-
-def toggle_rename_mode(user_id: int) -> bool:
-    if user_id in RENAME_MODE_USERS:
-        RENAME_MODE_USERS.remove(user_id)
-        return False
-    else:
-        RENAME_MODE_USERS.add(user_id)
-        return True
 
 async def wait_for_reply(message_id: int, timeout: int = 60) -> Message:
     future = asyncio.Future()
@@ -96,34 +82,7 @@ async def prompt_rename_choice(client, message, media_msg):
     
     await send_message(message, caption, InlineKeyboardMarkup(buttons))
 
-async def rename_command_handler(client, message):
-    user_id = message.from_user.id
-    
-    if message.reply_to_message and get_media(message.reply_to_message):
-        await prompt_rename_choice(client, message, message.reply_to_message)
-        return
-        
-    is_active = toggle_rename_mode(user_id)
-    if is_active:
-        msg = (
-            "<b>❖ RENAME MODE : ON</b>\n"
-            "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n"
-            "├ Info : Send any media file in PM to rename it.\n"
-            "└ Note : Initiate any leech task to be prompted to rename the output."
-        )
-    else:
-        msg = "<b>❖ RENAME MODE : OFF</b>"
-        
-    await send_message(message, msg)
 
-async def rename_private_media_handler(client, message):
-    if not message.from_user:
-        return
-    if not get_media(message):
-        return
-    user_id = message.from_user.id
-    if is_rename_mode(user_id):
-        await prompt_rename_choice(client, message, message)
 
 async def prompt_leech_rename(client, message) -> str:
     prompt = await send_message(
@@ -424,62 +383,4 @@ async def reply_listener(client, message):
             future.set_result(message)
 
 
-async def rename_force_reply_handler(client, message):
-    reply_message = message.reply_to_message
-    if not reply_message or not reply_message.reply_markup or not isinstance(reply_message.reply_markup, ForceReply):
-        return
-        
-    if not reply_message.text or "Please enter the new filename" not in reply_message.text:
-        return
 
-    if not message.text:
-        await send_message(message, "Please send a text filename, not media.")
-        return
-        
-    new_name = message.text.strip()
-    user_id = message.from_user.id
-    
-    media_msg = reply_message.reply_to_message
-    if not media_msg:
-        media_msg = user_media_to_rename.get(user_id)
-    if not media_msg:
-        await send_message(message, "Expired. Send the file again.")
-        return
-
-    media = get_media(media_msg)
-    if not media:
-        await send_message(message, "Could not find media in the original message.")
-        return
-        
-    # Infer extension if user didn't provide one
-    if "." not in new_name:
-        extn = "bin"
-        if hasattr(media, "file_name") and media.file_name and "." in media.file_name:
-            extn = media.file_name.rsplit('.', 1)[-1]
-        elif getattr(media, "mime_type", None):
-            mime = media.mime_type
-            if "video" in mime: extn = "mp4"
-            elif "audio" in mime: extn = "mp3"
-            elif "image" in mime: extn = "jpg"
-            else: extn = "mkv"
-        new_name = f"{new_name}.{extn}"
-        
-    user_rename_preferences[user_id] = new_name
-    
-    await delete_message(reply_message)
-    await delete_message(message)
-    
-    buttons = [[InlineKeyboardButton("❖ DOCUMENT", callback_data=f"ren_up_document_{user_id}")]]
-    
-    media_type = type(media).__name__.lower()
-    if media_type in ["video", "document"]:
-        buttons.append([InlineKeyboardButton("❖ VIDEO", callback_data=f"ren_up_video_{user_id}")])
-    elif media_type == "audio":
-        buttons.append([InlineKeyboardButton("❖ AUDIO", callback_data=f"ren_up_audio_{user_id}")])
-        
-    await client.send_message(
-        chat_id=message.chat.id,
-        text=f"<b>❖ OUTPUT TYPE SELECT</b>\n┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n├ Name : <code>{new_name}</code>\n└ Info : Select the output file type.",
-        reply_markup=InlineKeyboardMarkup(buttons),
-        reply_to_message_id=media_msg.id
-    )
