@@ -221,7 +221,7 @@ DEFAULT_ENCODE_PRESET = {
         "crf": 34,
         "preset": 7,
         "pix_fmt": "yuv420p10le",
-        "profile": 1,
+        "profile": 0,
         "level": "5.1",
         "bf": 5,
         "extra_params": "tune=0:film-grain=0",

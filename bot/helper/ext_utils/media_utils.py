@@ -640,7 +640,7 @@ class FFMpeg:
 
         if v_codec == "libsvtav1":
             svt_params = f"preset={preset}:crf={crf}"
-            if v_params.get("profile"):
+            if v_params.get("profile") is not None:
                 svt_params += f":profile={v_params['profile']}"
             if v_params.get("level"):
                 svt_params += f":level={v_params['level']}"
