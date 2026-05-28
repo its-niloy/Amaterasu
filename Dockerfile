@@ -1,4 +1,4 @@
-FROM python:3.11-slim-bookworm
+FROM python:3.11-slim-bullseye
 
 ENV LANG=C.UTF-8 \
     DEBIAN_FRONTEND=noninteractive \
@@ -43,8 +43,8 @@ RUN apt-get update && apt-get upgrade -y && \
         default-jre-headless \
     # Install MEGAcmd
     && mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://mega.nz/linux/repo/Debian_12/Release.key | gpg --dearmor -o /etc/apt/keyrings/mega.nz.gpg \
-    && echo "deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/mega.nz.gpg] https://mega.nz/linux/repo/Debian_12/ ./" > /etc/apt/sources.list.d/mega.nz.list \
+    && curl -fsSL https://mega.nz/linux/repo/Debian_11/Release.key | gpg --dearmor -o /etc/apt/keyrings/mega.nz.gpg \
+    && echo "deb [arch=amd64,arm64 signed-by=/etc/apt/keyrings/mega.nz.gpg] https://mega.nz/linux/repo/Debian_11/ ./" > /etc/apt/sources.list.d/mega.nz.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends megacmd \
     && apt-get clean \
