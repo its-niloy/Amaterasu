@@ -621,36 +621,21 @@ class FFMpeg:
 
         output_file = get_encode_output_path(input_file, v_codec)
 
-        is_vs = (v_codec == "libsvtav1")
-        
-        if is_vs:
-            cmd = [
-                "taskset", "-c", f"{cores}",
-                BinConfig.FFMPEG_NAME,
-                "-y", "-hide_banner", "-loglevel", "error", "-progress", "pipe:1",
-                "-i", "-",               # Input 0: Video from pipe
-                "-i", input_file,        # Input 1: Audio/Subtitles from original file
-                "-map", "0:v:0?",
-                "-map", "1:a?",
-                "-c:v", v_codec,
-            ]
-            if sub_mode == "copy":
-                cmd.extend(["-map", "1:s?", "-c:s", "copy"])
-        else:
-            cmd = [
-                "taskset", "-c", f"{cores}",
-                BinConfig.FFMPEG_NAME,
-                "-hide_banner", "-loglevel", "error", "-progress", "pipe:1",
-                "-i", input_file,
-                "-map", "0:v:0?",
-                "-map", "0:a?",
-                "-c:v", v_codec,
-            ]
-            if sub_mode == "copy":
-                cmd.extend(["-map", "0:s?", "-c:s", "copy"])
+        cmd = [
+            "taskset", "-c", f"{cores}",
+            BinConfig.FFMPEG_NAME,
+            "-hide_banner", "-loglevel", "error", "-progress", "pipe:1",
+            "-i", input_file,
+            "-map", "0:v:0?",
+            "-map", "0:a?",
+            "-c:v", v_codec,
+        ]
 
-        crf = v_params.get("crf", 32)
-        preset = v_params.get("preset", 6)
+        if sub_mode == "copy":
+            cmd.extend(["-map", "0:s?", "-c:s", "copy"])
+
+        crf = v_params.get("crf", 30)
+        preset = v_params.get("preset", 4)
         pix_fmt = v_params.get("pix_fmt", "yuv420p10le")
 
         if v_codec == "libsvtav1":
@@ -687,28 +672,7 @@ class FFMpeg:
         if self._listener.is_cancelled:
             return False
 
-        if getattr(self, "is_vs", False) or is_vs:
-            from bot.helper.ext_utils.vapoursynth_utils import generate_vpy_script
-            vpy_script = f"{input_file}.vpy"
-            generate_vpy_script(input_file, vpy_script)
-            
-            vspipe_cmd = ["vspipe", "--y4m", vpy_script, "-"]
-            LOGGER.info(f"VSPipe Command: {' '.join(vspipe_cmd)}")
-            
-            import os
-            r, w = os.pipe()
-            
-            self.vspipe_proc = await create_subprocess_exec(
-                *vspipe_cmd, stdout=w, stderr=PIPE
-            )
-            os.close(w)
-            
-            self._listener.subproc = await create_subprocess_exec(
-                *cmd, stdin=r, stdout=PIPE, stderr=PIPE
-            )
-            os.close(r)
-        else:
-            self._listener.subproc = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
+        self._listener.subproc = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
         await self._ffmpeg_progress()
         _, stderr = await self._listener.subproc.communicate()
         code = self._listener.subproc.returncode
@@ -723,12 +687,9 @@ class FFMpeg:
         else:
             try:
                 stderr = stderr.decode().strip()
-                if getattr(self, "vspipe_proc", None) and self.vspipe_proc.returncode != 0:
-                    vs_err = (await self.vspipe_proc.stderr.read()).decode().strip()
-                    stderr += f"\n[VSPipe Error]: {vs_err}"
             except Exception:
                 stderr = "Unable to decode the error!"
-            LOGGER.error(f"{stderr}\nError encoding video. Path: {input_file}")
+            LOGGER.error(f"{stderr}. Error encoding video. Path: {input_file}")
             if await aiopath.exists(output_file):
                 await remove(output_file)
             return False
