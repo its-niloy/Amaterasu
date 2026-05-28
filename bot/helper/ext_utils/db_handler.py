@@ -38,6 +38,92 @@ class DbManager:
             await self._conn.close()
         self._conn = None
 
+    async def migrate_from_wzmlx(self):
+        """One-time migration from WZML-X (wzmlx db) to Amaterasu (amaterasu db).
+
+        Only runs on first deployment when amaterasu database has no data.
+        Copies all collections from wzmlx except settings.deployConfig.
+        """
+        if self._return or self._conn is None:
+            return
+
+        try:
+            # Check if amaterasu db already has data (any collection with documents)
+            amaterasu_collections = await self.db.list_collection_names()
+            for coll_name in amaterasu_collections:
+                if await self.db[coll_name].count_documents({}, limit=1) > 0:
+                    LOGGER.info(
+                        "Amaterasu database already has data. "
+                        "Skipping WZML-X migration."
+                    )
+                    return
+
+            # Check if wzmlx database exists with data
+            wzmlx_db = self._conn.wzmlx
+            wzmlx_collections = await wzmlx_db.list_collection_names()
+            if not wzmlx_collections:
+                LOGGER.info(
+                    "No WZML-X (wzmlx) database found. Skipping migration."
+                )
+                return
+
+            LOGGER.info(
+                "WZML-X database detected! Starting one-time migration "
+                "from wzmlx → amaterasu..."
+            )
+
+            total_docs = 0
+            total_collections = 0
+            skipped_collections = []
+
+            for coll_name in wzmlx_collections:
+                # Skip settings.deployConfig as per user preference
+                if coll_name == "settings.deployConfig":
+                    skipped_collections.append(coll_name)
+                    continue
+
+                source_coll = wzmlx_db[coll_name]
+                doc_count = await source_coll.count_documents({})
+                if doc_count == 0:
+                    continue
+
+                target_coll = self.db[coll_name]
+                cursor = source_coll.find({})
+                docs = await cursor.to_list(length=None)
+
+                if docs:
+                    try:
+                        result = await target_coll.insert_many(
+                            docs, ordered=False
+                        )
+                        inserted = len(result.inserted_ids)
+                        total_docs += inserted
+                        total_collections += 1
+                        LOGGER.info(
+                            f"  Migrated: {coll_name} "
+                            f"({inserted}/{doc_count} documents)"
+                        )
+                    except Exception as e:
+                        LOGGER.warning(
+                            f"  Partial migration for {coll_name}: {e}"
+                        )
+
+            if skipped_collections:
+                LOGGER.info(
+                    f"  Skipped collections: {', '.join(skipped_collections)}"
+                )
+
+            LOGGER.info(
+                f"WZML-X → Amaterasu migration complete! "
+                f"Migrated {total_docs} documents across "
+                f"{total_collections} collections."
+            )
+
+        except PyMongoError as e:
+            LOGGER.error(f"Error during WZML-X migration: {e}")
+        except Exception as e:
+            LOGGER.error(f"Unexpected error during WZML-X migration: {e}")
+
     async def update_deploy_config(self):
         if self._return:
             return

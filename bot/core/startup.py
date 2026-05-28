@@ -82,6 +82,7 @@ async def load_settings():
         if await aiopath.exists(p):
             await rmtree(p, ignore_errors=True)
     await database.connect()
+    await database.migrate_from_wzmlx()
     if database.db is not None:
         BOT_ID = Config.BOT_TOKEN.split(":", 1)[0]
         try:
