@@ -13,6 +13,7 @@ def generate_vpy_script(input_file: str, output_vpy: str) -> str:
     input_file_escaped = input_file.replace('\\', '/')
     
     script_content = f"""import sys
+sys.path.append("/usr/local/lib/python3.11/site-packages")
 import vapoursynth as vs
 from vsdenoise import DFTTest, BM3D, NLM, MVTools
 from vsdehalo import dehalo_alpha
