@@ -74,14 +74,8 @@ class DbManager:
 
             total_docs = 0
             total_collections = 0
-            skipped_collections = []
 
             for coll_name in wzmlx_collections:
-                # Skip settings.deployConfig as per user preference
-                if coll_name == "settings.deployConfig":
-                    skipped_collections.append(coll_name)
-                    continue
-
                 source_coll = wzmlx_db[coll_name]
                 doc_count = await source_coll.count_documents({})
                 if doc_count == 0:
@@ -107,11 +101,6 @@ class DbManager:
                         LOGGER.warning(
                             f"  Partial migration for {coll_name}: {e}"
                         )
-
-            if skipped_collections:
-                LOGGER.info(
-                    f"  Skipped collections: {', '.join(skipped_collections)}"
-                )
 
             LOGGER.info(
                 f"WZML-X → Amaterasu migration complete! "
