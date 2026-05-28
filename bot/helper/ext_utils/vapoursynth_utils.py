@@ -48,47 +48,4 @@ clip.set_output()
     
     return output_vpy
 
-async def run_vspipe_ffmpeg(input_file: str, ffmpeg_cmd: list) -> tuple[bool, str]:
-    """
-    Executes vspipe and pipes stdout to ffmpeg stdin asynchronously.
-    """
-    vpy_script = str(Path(input_file).with_suffix('.vpy'))
-    generate_vpy_script(input_file, vpy_script)
-    
-    vspipe_cmd = ["vspipe", "--y4m", vpy_script, "-"]
-    
-    LOGGER.info(f"Running VapourSynth Pipeline for: {input_file}")
-    LOGGER.info(f"VSPipe Command: {' '.join(vspipe_cmd)}")
-    LOGGER.info(f"FFmpeg Command: {' '.join(ffmpeg_cmd)}")
-    
-    try:
-        vspipe_proc = await asyncio.create_subprocess_exec(
-            *vspipe_cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        
-        ffmpeg_proc = await asyncio.create_subprocess_exec(
-            *ffmpeg_cmd,
-            stdin=vspipe_proc.stdout,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        
-        # Close stdout so vspipe receives SIGPIPE if ffmpeg exits early
-        if vspipe_proc.stdout:
-            vspipe_proc.stdout.close()
-            
-        stdout, stderr = await ffmpeg_proc.communicate()
-        
-        if ffmpeg_proc.returncode != 0:
-            error_msg = stderr.decode('utf-8') if stderr else "Unknown FFmpeg Error"
-            vspipe_err = (await vspipe_proc.stderr.read()).decode('utf-8') if vspipe_proc.stderr else ""
-            LOGGER.error(f"FFmpeg Error in VSPipe Pipeline: {error_msg}\nVSPipe Error: {vspipe_err}")
-            return False, error_msg
-            
-        return True, ""
-        
-    except Exception as e:
-        LOGGER.error(f"Failed to run VSPipe/FFmpeg pipeline: {e}")
-        return False, str(e)
+
