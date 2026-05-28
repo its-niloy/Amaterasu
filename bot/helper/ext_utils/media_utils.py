@@ -643,7 +643,8 @@ class FFMpeg:
             if v_params.get("profile") is not None:
                 svt_params += f":profile={v_params['profile']}"
             if v_params.get("level"):
-                svt_params += f":level={v_params['level']}"
+                lvl = str(v_params['level']).replace(".", "")
+                svt_params += f":level={lvl}"
             if v_params.get("extra_params"):
                 svt_params += f":{v_params['extra_params']}"
             cmd.extend(["-pix_fmt", pix_fmt, "-svtav1-params", svt_params])
