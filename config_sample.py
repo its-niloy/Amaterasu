@@ -214,37 +214,17 @@ SEARCH_PLUGINS = []
 # 17. ENCODE SETTINGS
 # ==========================================
 DEFAULT_ENCODE_PRESET = {
-    "video_codec": "libsvtav1",  # Must link to SVT-AV1-Essential v4.0.1+
+    "video_codec": "libsvtav1",  # Standard SVT-AV1 Encoder
     "audio_codec": "libopus",
     "subtitle_mode": "copy",
     "video_params": {
-        "crf": 30,  # Your target from the previous prompt, within the 10.0-35.0 CVVDP range
-        "preset": 3,  # Matches --preset 3 (Ultra-deep, high-efficiency analysis)
+        "crf": 30,  # Optimal CRF for standard anime encode
+        "preset": 4,  # Standard preset sweet-spot for quality/speed
         "pix_fmt": "yuv420p10le",
         "profile": 0,
         "level": "5.1",
-        # Custom parameters exposed by the SVT-AV1-Essential fork mapped to FFmpeg format:
-        "extra_params": (
-            "tune=2:"
-            "noise-norm-strength=1:"
-            "qp-scale-compress-strength=3:"
-            "ac-bias=1.0:"
-            "sharp-tx=0:"
-            "tx-bias=2:"
-            "complex-hvs=1:"
-            "noise-adaptive-filtering=1:"
-            "enable-alt-cdef=1:"
-            "enable-alt-dlf=2:"
-            "qm-min=0:"
-            "qm-max=15:"
-            "chroma-qm-min=0:"
-            "luminance-qp-bias=0:"
-            "enable-dlf=3:"
-            "enable-tf=2:"
-            "enable-dg=1:"
-            "tile-columns=1:"
-            "fast-decode=2"
-        ),
+        # Standard Mainline SVT-AV1 Optimized Parameters:
+        "extra_params": "tune=0:film-grain=8:film-grain-denoise=0:enable-overlays=1:scm=2:keyint=240:irefresh-type=2",
         "color_primaries": "bt709",
         "color_trc": "bt709",
         "colorspace": "bt709",
