@@ -12,6 +12,10 @@ RUN apt-get update && apt-get upgrade -y && \
     # Add non-free repo for unrar (if using debian bullseye/bookworm)
     sed -i 's/main$/main contrib non-free/g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || true && \
     sed -i 's/main$/main contrib non-free/g' /etc/apt/sources.list 2>/dev/null || true && \
+    # Add deb-multimedia for VapourSynth
+    echo "deb https://www.deb-multimedia.org bookworm main non-free" > /etc/apt/sources.list.d/deb-multimedia.list && \
+    apt-get update -oAcquire::AllowInsecureRepositories=true && \
+    apt-get install -y --allow-unauthenticated deb-multimedia-keyring && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
         bash \
