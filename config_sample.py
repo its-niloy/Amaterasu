@@ -214,16 +214,16 @@ SEARCH_PLUGINS = []
 # 17. ENCODE SETTINGS
 # ==========================================
 DEFAULT_ENCODE_PRESET = {
-    "video_codec": "libsvtav1",
+    "video_codec": "libsvtav1",  # Swapped from NVENC hardware to SVT-AV1 CPU encoder
     "audio_codec": "libopus",
     "subtitle_mode": "copy",
     "video_params": {
-        "crf": 32,  # Optimized from 24 for massive space savings
-        "preset": 6,  # Changed from 7 for vastly better compression efficiency
-        "pix_fmt": "yuv420p10le",
-        "profile": 0,
+        "crf": 32,  # The optimal space-to-quality target for anime (Range: 0-63)
+        "preset": 6,  # The ideal efficiency-to-speed sweet spot for SVT-AV1
+        "pix_fmt": "yuv420p10le",  # CPU-native 10-bit color format to prevent banding
+        "profile": 0,  # Main profile (corresponds to high-depth AV1 main profile)
         "level": "5.1",
-        "extra_params": "tune=0:film-grain=6:film-grain-denoise=0",
+        "extra_params": "tune=0:film-grain=6:film-grain-denoise=0:enable-overlays=1",
         "color_primaries": "bt709",
         "color_trc": "bt709",
         "colorspace": "bt709",
