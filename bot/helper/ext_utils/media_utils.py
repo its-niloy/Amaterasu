@@ -647,7 +647,7 @@ class FFMpeg:
         if v_params.get("extra_params"):
             svt_params += f":{v_params['extra_params']}"
 
-        if getattr(self._listener, "is_vs", False) and v_codec == "libsvtav1":
+        if v_codec == "libsvtav1":
             from bot.helper.ext_utils.vapoursynth_utils import run_vspipe_ffmpeg
             audio_bitrate = a_params.get("bitrate", "128k")
             success, err = await run_vspipe_ffmpeg(input_file, output_file, svt_params, audio_bitrate)
@@ -661,8 +661,6 @@ class FFMpeg:
                     await remove(output_file)
                 return False
 
-        if v_codec == "libsvtav1":
-            cmd.extend(["-pix_fmt", pix_fmt, "-svtav1-params", svt_params])
         elif v_codec == "libx265":
             x265_params = f"crf={crf}:preset={preset}"
             cmd.extend(["-pix_fmt", pix_fmt, "-x265-params", x265_params])
