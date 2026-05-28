@@ -218,7 +218,7 @@ DEFAULT_ENCODE_PRESET = {
     "audio_codec": "libopus",
     "subtitle_mode": "copy",
     "video_params": {
-        "crf": 30,  # Optimal CRF for standard anime encode
+        "crf": 34,  # Optimal CRF for standard anime encode
         "preset": 6,  # Standard preset sweet-spot for quality/speed
         "pix_fmt": "yuv420p10le",
         "profile": 0,
