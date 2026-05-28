@@ -27,7 +27,6 @@ RUN apt-get update && apt-get upgrade -y && \
         libmagic1 \
         locales \
         tzdata \
-        ffmpeg \
         aria2 \
         qbittorrent-nox \
         p7zip-full \
@@ -50,6 +49,25 @@ RUN apt-get update && apt-get upgrade -y && \
     && apt-get install -y --no-install-recommends megacmd \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Compile SVT-AV1-Essential and FFmpeg from source
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        cmake nasm yasm pkg-config \
+        libx264-dev libx265-dev libopus-dev && \
+    git clone https://github.com/nekotrix/SVT-AV1-Essential.git /tmp/svt-av1 && \
+    cd /tmp/svt-av1/Build && \
+    cmake .. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release && \
+    make -j$(nproc) && \
+    make install && \
+    git clone https://git.ffmpeg.org/ffmpeg.git /tmp/ffmpeg && \
+    cd /tmp/ffmpeg && \
+    ./configure --enable-libsvtav1 --enable-gpl --enable-libx264 --enable-libx265 --enable-libopus --enable-nonfree && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig && \
+    rm -rf /tmp/svt-av1 /tmp/ffmpeg && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy and install python requirements
 COPY requirements.txt .
