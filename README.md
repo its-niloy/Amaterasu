@@ -105,8 +105,8 @@ It converges five industrial download engines (Aria2c, qBittorrent, JDownloader,
       <p>Instantly spawn HTTP 206 streamable links from Telegram files. Features automated <strong>Multi-Token Load Balancing</strong> across multiple bot tokens to evade FloodWait penalties and maintain zero latency under heavy load.</p>
     </td>
     <td align="center" width="50%">
-      <h3>🎭 Smart Rename Engine</h3>
-      <p>Toggle <code>/rename</code> mode to intercept any leech task or file sent via PM. Type your new filename and Amaterasu renames before uploading. Supports auto-rename templates for batch operations.</p>
+      <h3>🎭 Auto-Rename Engine</h3>
+      <p>Intercept any leech task or upload to automatically rename it before uploading. Supports robust auto-rename templates (e.g. <code>/autorename</code>) for batch operations and dynamic media grouping.</p>
     </td>
   </tr>
   <tr>
@@ -744,7 +744,6 @@ All limits are in **GB**. Set `0` to disable the limit.
 | Command | Shortcut | Description |
 |---|---|---|
 | `/link` | `/stream`, `/f2l` | Generate direct stream/download links for Telegram files |
-| `/rename` | `/renamemode` | Toggle rename mode or rename a specific file (reply to it) |
 | `/autorename` | `/ar` | Set up or use an auto-rename template |
 | `/telegraph` | `/tg` | Upload an image or video (under 5 MB) to Telegraph and get a permanent link |
 | `/speedtest` | `/stest` | Run a server speed test via speedtest.net |
