@@ -695,14 +695,18 @@ class FFMpeg:
             vspipe_cmd = ["vspipe", "--y4m", vpy_script, "-"]
             LOGGER.info(f"VSPipe Command: {' '.join(vspipe_cmd)}")
             
+            import os
+            r, w = os.pipe()
+            
             self.vspipe_proc = await create_subprocess_exec(
-                *vspipe_cmd, stdout=PIPE, stderr=PIPE
+                *vspipe_cmd, stdout=w, stderr=PIPE
             )
+            os.close(w)
+            
             self._listener.subproc = await create_subprocess_exec(
-                *cmd, stdin=self.vspipe_proc.stdout, stdout=PIPE, stderr=PIPE
+                *cmd, stdin=r, stdout=PIPE, stderr=PIPE
             )
-            if self.vspipe_proc.stdout:
-                self.vspipe_proc.stdout.close()
+            os.close(r)
         else:
             self._listener.subproc = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
         await self._ffmpeg_progress()
