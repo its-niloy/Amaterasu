@@ -44,8 +44,6 @@ RUN apt-get update && apt-get upgrade -y && \
         procps \
         mediainfo \
         vapoursynth \
-        python3-vapoursynth \
-        vapoursynth-lsmashsource \
         vapoursynth-ffms2 \
         default-jre-headless \
     # Install MEGAcmd
