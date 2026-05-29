@@ -101,6 +101,47 @@ async def files(request: Request):
     return templates.TemplateResponse(request, "page.html")
 
 
+@app.get("/app/encode-profiles", response_class=HTMLResponse)
+async def encode_profiles_page(request: Request):
+    return templates.TemplateResponse(request, "encode_profiles.html")
+
+@app.get("/api/profiles")
+async def list_profiles(user_id: int):
+    from bot.helper.ext_utils.db_handler import database
+    profiles = await database.get_encode_profiles(user_id)
+    if profiles and "_id" in profiles:
+        del profiles["_id"]
+    return JSONResponse(profiles)
+
+@app.post("/api/profiles")
+async def create_profile(user_id: int, request: Request):
+    from bot.helper.ext_utils.db_handler import database
+    import uuid
+    data = await request.json()
+    pid = uuid.uuid4().hex[:8]
+    await database.save_encode_profile(user_id, pid, data)
+    return JSONResponse({"id": pid, "status": "created"})
+
+@app.put("/api/profiles/{pid}")
+async def update_profile(pid: str, user_id: int, request: Request):
+    from bot.helper.ext_utils.db_handler import database
+    data = await request.json()
+    await database.save_encode_profile(user_id, pid, data)
+    return JSONResponse({"status": "updated"})
+
+@app.delete("/api/profiles/{pid}")
+async def delete_profile(pid: str, user_id: int):
+    from bot.helper.ext_utils.db_handler import database
+    await database.delete_encode_profile(user_id, pid)
+    return JSONResponse({"status": "deleted"})
+
+@app.post("/api/profiles/{pid}/default")
+async def set_default_profile(pid: str, user_id: int):
+    from bot.helper.ext_utils.db_handler import database
+    await database.set_default_encode_profile(user_id, pid)
+    return JSONResponse({"status": "default_set"})
+
+
 @app.api_route(
     "/app/files/torrent", methods=["GET", "POST"], response_class=HTMLResponse
 )

@@ -625,6 +625,11 @@ class FFMpeg:
         prof_meta = profile.get("metadata", {})
         enc_meta = {**prof_meta, **(metadata or {})}
 
+        if enc_meta:
+            from ..ext_utils.metadata_utils import MetadataProcessor
+            processor = MetadataProcessor()
+            enc_meta = await processor.process(enc_meta, input_file)
+
         v_track = enc_meta.pop("v_track", "0")
         a_track = enc_meta.pop("a_track", "?")
         s_track = enc_meta.pop("s_track", "?")

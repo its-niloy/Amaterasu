@@ -156,23 +156,7 @@ class TaskListener(TaskConfig):
                 self.encode_profile = self._temp_profiles.get(pid)
             self.encode_event.set()
 
-    async def _prompt_encode_metadata(self):
-        msg_text = "<b>Send metadata</b> as <code>key=value|key2=value2</code> or send <code>skip</code> to skip.\nTimeout: 60s"
-        reply_to = await send_message(self.message, msg_text)
-        self.encode_event = Event()
-        self.encode_metadata = {}
-        
-        handler = self.client.add_handler(
-            MessageHandler(self._metadata_handler_cb, filters=text & user(self.user_id)),
-            group=-1,
-        )
-        try:
-            await wait_for(self.encode_event.wait(), timeout=60)
-        except Exception:
-            pass
-        finally:
-            self.client.remove_handler(*handler)
-            await delete_message(reply_to)
+
 
     async def _prompt_encode_profile(self):
         profiles = await database.get_encode_profiles(self.user_id)
@@ -202,7 +186,12 @@ class TaskListener(TaskConfig):
         try:
             await wait_for(self.encode_event.wait(), timeout=60)
         except Exception:
-            self.encode_profile = Config.DEFAULT_ENCODE_PRESET
+            user_default = None
+            for pid, pdata in profiles.items():
+                if pid != "_id" and pdata.get("is_default"):
+                    user_default = pdata
+                    break
+            self.encode_profile = user_default or Config.DEFAULT_ENCODE_PRESET
         finally:
             self.client.remove_handler(*handler)
             await delete_message(reply_to)
@@ -213,9 +202,8 @@ class TaskListener(TaskConfig):
             processor = MetadataProcessor()
             self.encode_metadata = processor.parse_string(self.encode_metadata)
         else:
-            await self._prompt_encode_metadata()
-            if self.is_cancelled:
-                return None
+            # Metadata is now built into the encoding profiles, no need to prompt manually
+            self.encode_metadata = {}
             
         await self._prompt_encode_profile()
         if self.is_cancelled or not self.encode_profile:
