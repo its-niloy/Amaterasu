@@ -35,9 +35,10 @@ const DEFAULT_PROFILE: EncodingProfile = {
 export const ProfileBuilder: React.FC<ProfileBuilderProps> = ({ initialData, onNavigate, onSave, onDelete }) => {
   const [profile, setProfile] = useState<EncodingProfile>(initialData || DEFAULT_PROFILE);
   const [customMetaList, setCustomMetaList] = useState<{key: string, value: string}[]>([]);
+  const [dispositionList, setDispositionList] = useState<{key: string, value: string}[]>([]);
   const [copied, setCopied] = useState(false);
 
-  // Sync custom metadata list with profile object
+  // Sync custom metadata list and disposition list with profile object
   useEffect(() => {
     if (initialData) {
       const standardKeys = ['title', 'v_track', 'a_track', 's_track'];
@@ -45,6 +46,10 @@ export const ProfileBuilder: React.FC<ProfileBuilderProps> = ({ initialData, onN
         .filter(([key]) => !standardKeys.includes(key))
         .map(([key, value]) => ({ key, value: String(value) }));
       setCustomMetaList(custom);
+
+      const disps = Object.entries(initialData.disposition || {})
+        .map(([key, value]) => ({ key, value: String(value) }));
+      setDispositionList(disps);
     }
   }, [initialData]);
 
@@ -97,6 +102,19 @@ export const ProfileBuilder: React.FC<ProfileBuilderProps> = ({ initialData, onN
       });
       
       return { ...prev, metadata: newMeta };
+    });
+  };
+
+  const applyDisposition = (items: {key: string, value: string}[]) => {
+    setDispositionList(items);
+    setProfile(prev => {
+      const newDisp: Record<string, string> = {};
+      items.forEach(item => {
+        if (item.key && item.value) {
+          newDisp[item.key] = item.value;
+        }
+      });
+      return { ...prev, disposition: Object.keys(newDisp).length > 0 ? newDisp : undefined };
     });
   };
 
@@ -370,6 +388,30 @@ export const ProfileBuilder: React.FC<ProfileBuilderProps> = ({ initialData, onN
                 <li>s:v:0 (First video stream)</li>
                 <li>s:a:0 (First audio stream)</li>
                 <li>s:s:0 (First subtitle stream)</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-white/10 pt-6">
+            <DynamicList
+              label="Stream Disposition Flags"
+              items={dispositionList}
+              onChange={applyDisposition}
+              addButtonText="Add Disposition"
+              keyPlaceholder="v:0"
+              valuePlaceholder="0"
+            />
+            <div className="bg-black/20 p-3 rounded-lg border border-white/5 mt-4">
+              <p className="text-xs text-slate-400 font-mono mb-1">Disposition Values:</p>
+              <ul className="text-xs text-slate-500 list-disc list-inside">
+                <li><code className="text-slate-400">default</code> — mark stream as default</li>
+                <li><code className="text-slate-400">0</code> — remove default/forced flags</li>
+                <li><code className="text-slate-400">default+forced</code> — combine multiple</li>
+              </ul>
+              <p className="text-xs text-slate-400 font-mono mt-2 mb-1">Common Keys:</p>
+              <ul className="text-xs text-slate-500 list-disc list-inside">
+                <li>v:0 (First video) · a:0, a:1 (Audio streams)</li>
+                <li>s:0, s:1 (Subtitle streams)</li>
               </ul>
             </div>
           </div>

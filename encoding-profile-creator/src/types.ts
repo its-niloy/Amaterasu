@@ -25,6 +25,9 @@ export interface EncodingProfile {
     channels?: number;
     vbr?: boolean;
   };
+  disposition?: {
+    [key: string]: string;  // e.g. "v:0": "0", "a:0": "default", "s:1": "0"
+  };
   is_default?: boolean;
 }
 

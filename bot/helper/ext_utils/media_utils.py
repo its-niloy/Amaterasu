@@ -774,9 +774,19 @@ class FFMpeg:
                 else:
                     cmd.extend(["-metadata", f"{k}={v}"])
 
+        # Apply disposition flags from profile
+        disposition = profile.get("disposition", {})
+        if disposition:
+            for stream_spec, disp_value in disposition.items():
+                cmd.extend([f"-disposition:{stream_spec}", disp_value])
+
         cmd.extend(["-threads", f"{threads}"])
         if is_mkv and hasattr(self._listener, "thumb") and self._listener.thumb:
-            cmd.extend(["-attach", self._listener.thumb, "-metadata:s:t", "mimetype=image/jpeg"])
+            cmd.extend([
+                "-attach", self._listener.thumb,
+                "-metadata:s:t", "mimetype=image/jpeg",
+                "-metadata:s:t", "filename=cover.jpg",
+            ])
         cmd.extend([output_file])
 
         if self._listener.is_cancelled:
