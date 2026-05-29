@@ -120,7 +120,14 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
                 "TG_PROXY",
             ]:
                 msg += "Restart required for this edit to take effect! You will not see the changes in bot vars, the edit will be in database only!\n\n"
-            msg += f"Send a valid value for {key}. Current value is '{Config.get(key)}'. Timeout: 60 sec"
+            import json
+            val = Config.get(key)
+            if isinstance(val, dict):
+                val_str = f"\n<pre><code class='language-python'>{json.dumps(val, indent=4)}</code></pre>\n"
+            else:
+                from html import escape
+                val_str = f"'{escape(str(val))}'"
+            msg += f"Send a valid value for {key}. Current value is {val_str}. Timeout: 60 sec"
         elif edit_type == "ariavar":
             buttons.data_button("↩ BACK", "botset aria")
             if key != "newkey":
