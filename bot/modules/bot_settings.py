@@ -71,6 +71,23 @@ DEFAULT_VALUES = {
     "QUEUE_DOWNLOAD": 0,
     "QUEUE_UPLOAD": 0,
     "USER_MAX_TASKS": 0,
+    "DEFAULT_ENCODE_PRESET": {
+        "video_codec": "libsvtav1",
+        "audio_codec": "libopus",
+        "subtitle_mode": "copy",
+        "video_params": {
+            "crf": 30,
+            "preset": 4,
+            "pix_fmt": "yuv420p10le",
+            "profile": 0,
+            "level": "5.1",
+            "extra_params": "tune=0:film-grain=8:film-grain-denoise=0:enable-overlays=1:scm=2:keyint=240:irefresh-type=2",
+            "color_primaries": "bt709",
+            "color_trc": "bt709",
+            "colorspace": "bt709",
+        },
+        "audio_params": {"bitrate": "128k", "channels": 2, "vbr": True},
+    },
 }
 
 
@@ -83,6 +100,7 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
         buttons.data_button("Aria2c Settings", "botset aria")
         buttons.data_button("Sabnzbd Settings", "botset nzb")
         buttons.data_button("JDownloader Sync", "botset syncjd")
+        buttons.data_button("Encode Preset", "botset botvar DEFAULT_ENCODE_PRESET")
         buttons.data_button("✕ CLOSE", "botset close")
         msg = "Bot Settings:"
     elif edit_type is not None:
