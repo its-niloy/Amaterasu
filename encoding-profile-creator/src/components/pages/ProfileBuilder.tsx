@@ -258,7 +258,42 @@ export const ProfileBuilder: React.FC<ProfileBuilderProps> = ({ initialData, onN
             />
           )}
 
-          <div className="md:col-span-2">
+          <TextField
+            label="Format Profile"
+            value={profile.video_params?.profile || ''}
+            onChange={(e) => updateVideoParams({ profile: e.target.value })}
+            placeholder="e.g. 0, main, high"
+          />
+
+          <TextField
+            label="Format Level"
+            value={profile.video_params?.level || ''}
+            onChange={(e) => updateVideoParams({ level: e.target.value })}
+            placeholder="e.g. 5.1"
+          />
+
+          <TextField
+            label="Color Primaries"
+            value={profile.video_params?.color_primaries || ''}
+            onChange={(e) => updateVideoParams({ color_primaries: e.target.value })}
+            placeholder="e.g. bt709"
+          />
+
+          <TextField
+            label="Color Transfer (TRC)"
+            value={profile.video_params?.color_trc || ''}
+            onChange={(e) => updateVideoParams({ color_trc: e.target.value })}
+            placeholder="e.g. bt709"
+          />
+
+          <TextField
+            label="Colorspace"
+            value={profile.video_params?.colorspace || ''}
+            onChange={(e) => updateVideoParams({ colorspace: e.target.value })}
+            placeholder="e.g. bt709"
+          />
+
+          <div className="md:col-span-1">
             <TextField
               label="Extra Parameters"
               value={profile.video_params?.extra_params || ''}

@@ -758,6 +758,19 @@ class FFMpeg:
         elif v_codec == "libx264":
             cmd.extend(["-pix_fmt", pix_fmt, "-crf", str(crf), "-preset", str(preset)])
 
+        if v_codec != "libsvtav1":
+            if v_params.get("profile") is not None and str(v_params["profile"]).strip():
+                cmd.extend(["-profile:v", str(v_params["profile"])])
+            if v_params.get("level") is not None and str(v_params["level"]).strip():
+                cmd.extend(["-level:v", str(v_params["level"])])
+
+        if v_params.get("color_primaries"):
+            cmd.extend(["-color_primaries", str(v_params["color_primaries"])])
+        if v_params.get("color_trc"):
+            cmd.extend(["-color_trc", str(v_params["color_trc"])])
+        if v_params.get("colorspace"):
+            cmd.extend(["-colorspace", str(v_params["colorspace"])])
+
         cmd.extend(["-c:a", a_codec])
         if a_codec != "copy":
             if a_params.get("bitrate"):

@@ -19,6 +19,9 @@ export interface EncodingProfile {
     profile?: number | string;
     level?: string;
     extra_params?: string;
+    color_primaries?: string;
+    color_trc?: string;
+    colorspace?: string;
   };
   audio_params: {
     bitrate?: string;
