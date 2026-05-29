@@ -732,6 +732,9 @@ class FFMpeg:
             add_map_flags(cmd, "s", s_track)
             cmd.extend(["-c:s", "copy"])
 
+        if is_mkv:
+            cmd.extend(["-map", "0:t?", "-c:t", "copy"])
+
         if not is_mkv and hasattr(self._listener, "thumb") and self._listener.thumb:
             cmd.extend(["-map", "1", "-c:v:1", "copy", "-disposition:v:1", "attached_pic"])
 
