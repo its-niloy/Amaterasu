@@ -1354,39 +1354,15 @@ async def edit_user_settings(client, query):
     elif data[2] == "enc_create":
         await query.answer()
         buttons = ButtonMaker()
-        buttons.data_button("✕ Stop", f"userset {user_id} back encode")
-        example_json = '''{
-    "name": "High Quality 1080p",
-    "video_codec": "libsvtav1",
-    "audio_codec": "libopus",
-    "subtitle_mode": "copy",
-    "metadata": {
-        "title": "My Video",
-        "v_track": "0",
-        "a_track": "1",
-        "s_track": "0",
-        "s:v:0": "title=High Quality SVT-AV1",
-        "s:a:0": "title=English Dubbed",
-        "s:s:0": "title=English Subs"
-    },
-    "video_params": {
-        "crf": 26,
-        "preset": 4,
-        "pix_fmt": "yuv420p10le",
-        "profile": 0,
-        "level": "5.1",
-        "extra_params": "tune=0:film-grain=4:film-grain-denoise=0:enable-overlays=1:scm=2:keyint=240:irefresh-type=2"
-    },
-    "audio_params": {
-        "bitrate": "192k",
-        "channels": 2,
-        "vbr": true
-    }
-}'''
-        await edit_message(message, f"Send a JSON string for the new profile.\nExample:\n<pre><code class='language-json'>{example_json}</code></pre>\nTimeout: 60s", buttons.build_menu(1))
-        rfunc = partial(update_user_settings, query, "encode")
-        pfunc = partial(_handle_enc_create, rfunc=rfunc)
-        await event_handler(client, query, pfunc, rfunc)
+        if Config.BASE_URL:
+            web_url = f"{Config.BASE_URL}/app/encode-profiles?user_id={user_id}"
+            buttons.url_button("🌐 Open Web Creator", web_url)
+            buttons.data_button("↩ BACK", f"userset {user_id} back encode")
+            text = "<b>Encoding Profile Creator</b>\n\nClick the button below to open the interactive Web UI and visually build your Encoding Profiles."
+            await edit_message(message, text, buttons.build_menu(1))
+        else:
+            buttons.data_button("↩ BACK", f"userset {user_id} back encode")
+            await edit_message(message, "<b>Error:</b> BASE_URL is not configured in your bot settings. The Web UI cannot be accessed.", buttons.build_menu(1))
     elif data[2] == "uphoster_destinations":
         await query.answer()
         user_dict = user_data.get(user_id, {})
