@@ -793,12 +793,18 @@ class FFMpeg:
             for stream_spec, disp_value in disposition.items():
                 cmd.extend([f"-disposition:{stream_spec}", disp_value])
 
+        temp_cover_dir = None
+        temp_cover_path = None
         cmd.extend(["-threads", f"{threads}"])
         if is_mkv and hasattr(self._listener, "thumb") and self._listener.thumb:
+            import aioshutil
+            from time import time
+            temp_cover_dir = f"{DOWNLOAD_DIR}temp_cover_{time()}"
+            await makedirs(temp_cover_dir, exist_ok=True)
+            temp_cover_path = ospath.join(temp_cover_dir, "cover.jpg")
+            await aioshutil.copy(self._listener.thumb, temp_cover_path)
             cmd.extend([
-                "-attach", self._listener.thumb,
-                "-metadata:s:t", "mimetype=image/jpeg",
-                "-metadata:s:t", "filename=cover.jpg",
+                "-attach", temp_cover_path
             ])
         cmd.extend([output_file])
 
@@ -806,12 +812,21 @@ class FFMpeg:
             if custom_thumb_path:
                 await remove(custom_thumb_path)
                 self._listener.thumb = original_thumb
+            if temp_cover_dir:
+                from aioshutil import rmtree
+                with suppress(Exception):
+                    await rmtree(temp_cover_dir)
             return False
 
         self._listener.subproc = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
         await self._ffmpeg_progress()
         _, stderr = await self._listener.subproc.communicate()
         code = self._listener.subproc.returncode
+
+        if temp_cover_dir:
+            from aioshutil import rmtree
+            with suppress(Exception):
+                await rmtree(temp_cover_dir)
 
         if self._listener.is_cancelled:
             if custom_thumb_path:
