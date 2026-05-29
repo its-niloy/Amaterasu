@@ -323,6 +323,13 @@ export const ProfileBuilder: React.FC<ProfileBuilderProps> = ({ initialData, onN
             />
           </div>
 
+          <TextField
+            label="Cover Image URL (Direct or Telegram Link)"
+            value={profile.cover_image || ''}
+            onChange={(e) => updateProfile({ cover_image: e.target.value })}
+            placeholder="e.g. https://t.me/channel/123 or https://example.com/poster.jpg"
+          />
+
           <div className="border-t border-white/10 pt-6">
             <h4 className="text-sm font-bold text-slate-300 mb-4">Track Selection</h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

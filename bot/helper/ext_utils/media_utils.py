@@ -116,6 +116,38 @@ async def download_image_thumb(url):
         LOGGER.error(f"Error downloading thumb from URL: {e}")
         return ""
 
+async def download_custom_thumb(url):
+    if url.startswith(("https://t.me/", "https://telegram.me/", "tg://")):
+        try:
+            from ..telegram_helper.message_utils import get_tg_link_message
+            msg, _ = await get_tg_link_message(url)
+            if isinstance(msg, list):
+                msg = msg[0]
+            if msg and (getattr(msg, "photo", None) or getattr(msg, "document", None)):
+                path = f"{DOWNLOAD_DIR}thumbnails"
+                await makedirs(path, exist_ok=True)
+                tmp_path = ospath.join(path, f"{time()}_tmp")
+                await msg.download(file_name=tmp_path)
+                
+                output = ospath.join(path, f"{time()}.jpg")
+                def _process_thumb(src, dst):
+                    with Image.open(src) as im:
+                        im.convert("RGB").save(dst, "JPEG")
+                try:
+                    await sync_to_async(_process_thumb, tmp_path, output)
+                except Exception as e:
+                    LOGGER.error(f"Failed to process telegram thumb image: {e}")
+                    with suppress(Exception):
+                        await remove(tmp_path)
+                    return ""
+                with suppress(Exception):
+                    await remove(tmp_path)
+                return output
+        except Exception as e:
+            LOGGER.error(f"Error downloading telegram thumb from URL: {e}")
+            return ""
+    return await download_image_thumb(url)
+
 
 async def get_media_info(path, extra_info=False):
     try:
@@ -660,6 +692,15 @@ class FFMpeg:
         a_track = enc_meta.pop("a_track", "?")
         s_track = enc_meta.pop("s_track", "?")
 
+        # Download and inject custom cover image if present
+        custom_thumb_path = None
+        original_thumb = getattr(self._listener, "thumb", None)
+        cover_url = profile.get("cover_image", "").strip()
+        if cover_url:
+            custom_thumb_path = await download_custom_thumb(cover_url)
+            if custom_thumb_path:
+                self._listener.thumb = custom_thumb_path
+
         cmd = [
             "taskset", "-c", f"{cores}",
             BinConfig.FFMPEG_NAME,
@@ -731,6 +772,9 @@ class FFMpeg:
         cmd.extend(["-threads", f"{threads}", output_file])
 
         if self._listener.is_cancelled:
+            if custom_thumb_path:
+                await remove(custom_thumb_path)
+                self._listener.thumb = original_thumb
             return False
 
         self._listener.subproc = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
@@ -739,11 +783,20 @@ class FFMpeg:
         code = self._listener.subproc.returncode
 
         if self._listener.is_cancelled:
+            if custom_thumb_path:
+                await remove(custom_thumb_path)
+                self._listener.thumb = original_thumb
             return False
         if code == 0:
+            if custom_thumb_path:
+                await remove(custom_thumb_path)
+                self._listener.thumb = original_thumb
             return output_file
         elif code == -9:
             self._listener.is_cancelled = True
+            if custom_thumb_path:
+                await remove(custom_thumb_path)
+                self._listener.thumb = original_thumb
             return False
         else:
             try:
@@ -753,6 +806,9 @@ class FFMpeg:
             LOGGER.error(f"{stderr}. Error encoding video. Path: {input_file}")
             if await aiopath.exists(output_file):
                 await remove(output_file)
+            if custom_thumb_path:
+                await remove(custom_thumb_path)
+                self._listener.thumb = original_thumb
             return False
 
     async def convert_video(self, video_file, ext, retry=False):

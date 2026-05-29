@@ -1,6 +1,7 @@
 export interface EncodingProfile {
   name: string;
   rename?: string;
+  cover_image?: string;
   video_codec: string;
   audio_codec: string;
   subtitle_mode: string;
