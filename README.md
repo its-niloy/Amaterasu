@@ -69,6 +69,7 @@
   - [Media & File Tools](#media--file-tools)
   - [Admin / Sudo Commands](#admin--sudo-commands)
 - [🎞️ Encoding & Metadata](#encoding--metadata)
+- [🎨 Encoding Profile Creator (Web UI)](#encoding-profile-creator-web-ui)
 - [🧰 Advanced Usage & Arguments](#advanced-usage--arguments)
   - [Argument Quick Reference](#argument-quick-reference)
   - [Telegram Link Downloads](#telegram-link-downloads)
@@ -832,6 +833,199 @@ Override or apply metadata instantly using the `-enmeta` flag. Separate key-valu
 
 ### 4. Cover Art Embedding
 When you set a custom thumbnail (via `/setthumb` or the `-t` argument), the bot will automatically embed that image as the official cover art (`attached_pic`) directly into the final MP4/MKV container during the encoding process.
+
+---
+
+<a id="encoding-profile-creator-web-ui"></a>
+
+## 🎨 Encoding Profile Creator (Web UI)
+
+Amaterasu ships with a **built-in visual web application** for creating, editing, and managing Encode Profiles — without writing a single line of JSON by hand.
+
+Access it at:
+```
+http://your-server:PORT/app/encode-profiles?user_id=YOUR_TELEGRAM_ID
+```
+
+> [!TIP]
+> Replace `your-server:PORT` with your actual server address and the port set in `config.py`, and `YOUR_TELEGRAM_ID` with your numeric Telegram User ID.
+
+### Why Use the Web UI?
+
+Encoding profiles are powerful but involve complex FFmpeg concepts — stream specifiers (`s:a:0`), disposition flags, CRF values, codec parameters, and metadata injection. The Web UI **completely abstracts all of this** into user-friendly dropdowns, sliders, and visual selectors.
+
+| Traditional (Raw JSON) | Web UI Equivalent |
+|---|---|
+| `"s:a:0": "title=English"` | Select **Audio → Track 1 → Title** → Type `English` |
+| `"a_track": "0,1"` | Select **Audio Tracks to Keep → Tracks 1 & 2** |
+| `"crf": 24` | Drag the **CRF slider** to 24 |
+| Typing full JSON and pasting into Telegram | Click **Save Profile** |
+
+---
+
+### 🏗️ Building a Profile (Step-by-Step)
+
+#### Step 1: Open the Profile Builder
+
+Navigate to the web UI URL and click **"➕ Create New Profile"**, or select an existing profile to edit. You can also start from a **Quick Preset** (pre-configured templates for common workflows like AV1 anime encoding or H.264 fast encoding).
+
+#### Step 2: Configure Video Settings
+
+The **Video Settings** section is open by default. Here you can configure:
+
+| Setting | Description | UI Element |
+|---|---|---|
+| **Video Codec** | The encoder to use (`libsvtav1`, `libx265`, `libx264`, or `copy`) | Dropdown |
+| **CRF (Quality)** | Quality level — lower = better quality, larger file. `24-28` recommended for AV1. | Slider with live label |
+| **Preset / Speed** | Encoding speed vs compression tradeoff. Slower = smaller files. | Dropdown |
+| **Pixel Format** | Bit depth. `yuv420p10le` recommended for 10-bit AV1/HEVC. | Dropdown |
+| **Format Profile & Level** | Codec compliance level (e.g., Profile `0`, Level `5.1`). | Dropdowns |
+| **Color Primaries / TRC / Colorspace** | HDR / SDR color metadata (`bt709`, `bt2020`, etc.). | Dropdowns |
+| **Extra Parameters** | Advanced SVT-AV1/x265 params in colon-separated format. | Text field |
+
+> [!NOTE]
+> Hover over the **[?]** icon next to settings like CRF, Preset, and Pixel Format for instant explanations of what they do.
+
+Below the video codec settings, you'll find the **Video Track Selection & Tags** sub-section:
+
+- **Video Tracks to Keep**: A dropdown offering `Keep All Tracks`, `Track 1 Only`, `Tracks 1 & 2`, or a `Custom Mapping` option for advanced users.
+- **Video Metadata Tags**: Visually add tags (Title, Language, Handler, or Custom) to specific video tracks. No need to type `s:v:0` — just select **Track 1** from a dropdown.
+- **Video Disposition Flags**: Set flags like `default`, `forced`, or `0` (remove all) per track.
+
+#### Step 3: Configure Audio Settings
+
+Expand the **Audio Settings** section to configure:
+
+| Setting | Description |
+|---|---|
+| **Audio Codec** | `libopus`, `aac`, `flac`, or `copy` |
+| **Bitrate** | Output audio bitrate (e.g., `128k`, `192k`, `320k`) |
+| **Channels** | Channel layout (Stereo, 5.1, 7.1, or keep original) |
+| **VBR Toggle** | Variable bitrate optimization |
+
+Just like Video, the Audio section includes its own **Track Selection**, **Metadata Tags**, and **Disposition Flags** sub-sections. For example, to label two audio tracks:
+
+1. Click **"Add Tag"** → Select **Track 1** → **Title** → Type `English`.
+2. Click **"Add Tag"** again → Select **Track 2** → **Title** → Type `Japanese`.
+3. To set the language metadata, add another tag → Select **Track 1** → **Language** → Pick `English (eng)` from the dropdown.
+
+> [!IMPORTANT]
+> You can add **multiple tags** to the same track (e.g., both a Title and a Language for Track 1). The UI handles duplicate-key deconfliction automatically.
+
+#### Step 4: Configure Subtitle Settings
+
+Expand the **Subtitle Settings** section:
+
+| Setting | Description |
+|---|---|
+| **Subtitle Mode** | `copy` (keep original subs) or `none` (discard all subtitles) |
+| **Subtitle Tracks to Keep** | Same track selector as Video/Audio |
+| **Subtitle Metadata Tags** | Add Title/Language tags to subtitle tracks |
+| **Subtitle Disposition Flags** | Mark subtitle tracks as `default`, `forced`, etc. |
+
+#### Step 5: Global Metadata
+
+The **Global Metadata** section handles file-level settings:
+
+| Setting | Description |
+|---|---|
+| **Rename File To** | Rename pattern for the output file (supports dynamic variables) |
+| **Global Title** | The internal metadata title embedded in the container |
+| **Cover Image URL** | A direct image URL or Telegram link to embed as cover art |
+
+##### Dynamic Variable Chips
+
+Below the **Rename File To** and **Global Title** fields, you'll see clickable chips for quick variable insertion:
+
+| Chip | Inserts | Resolves To (Example) |
+|---|---|---|
+| `{title}` | Parsed show/movie title | `Dr STONE` |
+| `{episode}` | Episode identifier | `S04E33` |
+| `{quality}` | Resolution quality tag | `1080p` |
+| `{resolution}` | Exact resolution | `1920x1080` |
+| `{basename}` | Original filename without extension | `Dr.STONE.S04E33.1080p.WEB-DL` |
+| `{filename}` | Full original filename | `Dr.STONE.S04E33.1080p.WEB-DL.mkv` |
+| `{year}` | Detected year from filename | `2024` |
+| `{audiolang}` | Primary audio language | `Japanese` |
+| `{sublang}` | Primary subtitle language | `English` |
+
+Click any chip to instantly insert it into the text field. Example rename pattern:
+```
+[Zangetsu] {title} - {episode}.mkv
+```
+This would produce: `[Zangetsu] Dr STONE - S04E33.mkv`
+
+---
+
+### 🔍 Live Preview
+
+At the bottom of the Profile Builder, a **Live Preview** panel shows the output of your settings in real-time. You can toggle between two views:
+
+| View | Description |
+|---|---|
+| **JSON Layout** | The raw JSON that will be saved as your profile. This is the exact format the bot's backend consumes. |
+| **FFmpeg Command** | A generated mock `ffmpeg` CLI command showing how your settings translate to actual FFmpeg arguments. Great for advanced users to verify. |
+
+The preview updates **instantly** as you change any setting.
+
+---
+
+### 📥 Importing & Exporting Profiles
+
+| Action | How |
+|---|---|
+| **Export** | Click the **Copy** button (📋) in the preview panel. The JSON is copied to your clipboard. |
+| **Import** | Click the **Import** button (⬇️) in the top bar. Paste any existing profile JSON into the prompt. The UI will auto-populate all fields. |
+| **Save to Bot** | Click **Save Profile**. The profile is stored in your MongoDB database and immediately available in Telegram via `/usetting → Encode Profiles`. |
+
+---
+
+### 📋 Example: Complete Anime Encoding Profile
+
+Here's what a typical anime encoding profile looks like when built through the Web UI:
+
+```json
+{
+    "name": "Anime1",
+    "video_codec": "libsvtav1",
+    "audio_codec": "copy",
+    "subtitle_mode": "copy",
+    "metadata": {
+        "title": "[Zangetsu] {title} - {episode}",
+        "v_track": "0",
+        "a_track": "1,0",
+        "s_track": "1,2",
+        "s:v:0": "title=Zangetsu",
+        "s:a:0": "title=English",
+        "s:a:1": "title=Japanese",
+        "s:s:1": "title=English",
+        "s:s:2": "title=Dubtitle"
+    },
+    "video_params": {
+        "crf": 5,
+        "preset": 5,
+        "pix_fmt": "yuv420p10le",
+        "extra_params": "tune=0:film-grain=0:enable-overlays=1:scm=2:keyint=240:irefresh-type=2",
+        "profile": "0",
+        "level": "5.1",
+        "color_primaries": "bt709",
+        "color_trc": "bt709",
+        "colorspace": "bt709"
+    },
+    "audio_params": {
+        "bitrate": "128k",
+        "vbr": true
+    },
+    "rename": "{title} - {episode}.mkv",
+    "cover_image": "https://example.com/cover.jpg",
+    "disposition": {
+        "a:0": "default",
+        "s:1": "default"
+    }
+}
+```
+
+The above profile was built entirely through visual dropdowns and selectors — **zero FFmpeg knowledge required**.
 
 ---
 
