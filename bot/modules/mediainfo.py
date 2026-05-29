@@ -12,6 +12,8 @@ from ..helper.ext_utils.bot_utils import cmd_exec
 from ..helper.ext_utils.telegraph_helper import telegraph
 from ..helper.telegram_helper.bot_commands import BotCommands
 from ..helper.telegram_helper.message_utils import send_message, edit_message
+from pyrogram.handlers import CallbackQueryHandler
+from pyrogram.filters import regex
 
 
 async def gen_mediainfo(message, link=None, media=None, mmsg=None):
@@ -122,3 +124,29 @@ async def mediainfo(_, message):
             return await send_message(message, help_msg)
     else:
         return await send_message(message, help_msg)
+
+async def minfo_callback(_, query):
+    message = query.message
+    await query.answer()
+    if file := next(
+        (
+            i
+            for i in [
+                message.document,
+                message.video,
+                message.audio,
+                message.voice,
+                message.animation,
+                message.video_note,
+            ]
+            if i is not None
+        ),
+        None,
+    ):
+        await gen_mediainfo(message, None, file, message)
+    else:
+        await send_message(message, "Media not found!")
+
+TgClient.bot.add_handler(
+    CallbackQueryHandler(minfo_callback, filters=regex("^minfo$"))
+)

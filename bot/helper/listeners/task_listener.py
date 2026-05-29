@@ -134,7 +134,7 @@ class TaskListener(TaskConfig):
         text_msg = message.text.strip()
         if text_msg.lower() != "skip":
             try:
-                from ...modules.metadata import MetadataProcessor
+                from ..ext_utils.metadata_utils import MetadataProcessor
                 processor = MetadataProcessor()
                 self.encode_metadata = processor.parse_string(text_msg)
             except Exception as e:
@@ -208,9 +208,14 @@ class TaskListener(TaskConfig):
             await delete_message(reply_to)
 
     async def _handle_encode_pipeline(self, up_path, gid):
-        await self._prompt_encode_metadata()
-        if self.is_cancelled:
-            return None
+        if getattr(self, "encode_metadata", None) and isinstance(self.encode_metadata, str):
+            from ..ext_utils.metadata_utils import MetadataProcessor
+            processor = MetadataProcessor()
+            self.encode_metadata = processor.parse_string(self.encode_metadata)
+        else:
+            await self._prompt_encode_metadata()
+            if self.is_cancelled:
+                return None
             
         await self._prompt_encode_profile()
         if self.is_cancelled or not self.encode_profile:

@@ -621,18 +621,35 @@ class FFMpeg:
 
         output_file = get_encode_output_path(input_file, v_codec)
 
+        # Merge profile metadata with task-specific metadata (task metadata overrides profile)
+        prof_meta = profile.get("metadata", {})
+        enc_meta = {**prof_meta, **(metadata or {})}
+
+        v_track = enc_meta.pop("v_track", "0")
+        a_track = enc_meta.pop("a_track", "?")
+        s_track = enc_meta.pop("s_track", "?")
+
         cmd = [
             "taskset", "-c", f"{cores}",
             BinConfig.FFMPEG_NAME,
             "-hide_banner", "-loglevel", "error", "-progress", "pipe:1",
             "-i", input_file,
-            "-map", "0:v:0?",
-            "-map", "0:a?",
-            "-c:v", v_codec,
         ]
 
+        if hasattr(self._listener, "thumb") and self._listener.thumb:
+            cmd.extend(["-i", self._listener.thumb])
+
+        cmd.extend([
+            "-map", f"0:v:{v_track}?",
+            "-map", f"0:a:{a_track}?",
+            "-c:v", v_codec,
+        ])
+
         if sub_mode == "copy":
-            cmd.extend(["-map", "0:s?", "-c:s", "copy"])
+            cmd.extend(["-map", f"0:s:{s_track}?", "-c:s", "copy"])
+
+        if hasattr(self._listener, "thumb") and self._listener.thumb:
+            cmd.extend(["-map", "1", "-c:v:1", "copy", "-disposition:v:1", "attached_pic"])
 
         crf = v_params.get("crf", 30)
         preset = v_params.get("preset", 4)
@@ -663,8 +680,8 @@ class FFMpeg:
             if a_params.get("vbr"):
                 cmd.extend(["-vbr", "on"])
 
-        if metadata:
-            for k, v in metadata.items():
+        if enc_meta:
+            for k, v in enc_meta.items():
                 cmd.extend(["-metadata", f"{k}={v}"])
 
         cmd.extend(["-threads", f"{threads}", output_file])

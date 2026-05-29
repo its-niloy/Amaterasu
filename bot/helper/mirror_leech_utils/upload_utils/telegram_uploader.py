@@ -33,7 +33,7 @@ from tenacity import (
 
 from ....core.config_manager import Config
 from ....core.tg_client import TgClient
-from ...ext_utils.bot_utils import sync_to_async
+from ...ext_utils.bot_utils import sync_to_async, ButtonMaker
 from ...ext_utils.files_utils import get_base_name, is_archive
 from ...ext_utils.status_utils import get_readable_file_size, get_readable_time
 from ...telegram_helper.message_utils import send_message
@@ -509,6 +509,8 @@ class TelegramUploader:
                     return
                 if thumb == "none":
                     thumb = None
+                buttons = ButtonMaker()
+                buttons.data_button("ℹ️ MediaInfo", "minfo")
                 self._sent_msg = await self._sent_msg.reply_document(
                     document=self._up_path,
                     quote=True,
@@ -517,6 +519,7 @@ class TelegramUploader:
                     disable_content_type_detection=True,
                     disable_notification=True,
                     progress=self._upload_progress,
+                    reply_markup=buttons.build_menu(1),
                 )
             elif is_video:
                 key = "videos"
@@ -539,6 +542,8 @@ class TelegramUploader:
                     return
                 if thumb == "none":
                     thumb = None
+                buttons = ButtonMaker()
+                buttons.data_button("ℹ️ MediaInfo", "minfo")
                 self._sent_msg = await self._sent_msg.reply_video(
                     video=self._up_path,
                     quote=True,
@@ -550,6 +555,7 @@ class TelegramUploader:
                     supports_streaming=True,
                     disable_notification=True,
                     progress=self._upload_progress,
+                    reply_markup=buttons.build_menu(1),
                 )
             elif is_audio:
                 key = "audios"
@@ -558,6 +564,8 @@ class TelegramUploader:
                     return
                 if thumb == "none":
                     thumb = None
+                buttons = ButtonMaker()
+                buttons.data_button("ℹ️ MediaInfo", "minfo")
                 self._sent_msg = await self._sent_msg.reply_audio(
                     audio=self._up_path,
                     quote=True,
@@ -568,6 +576,7 @@ class TelegramUploader:
                     thumb=thumb,
                     disable_notification=True,
                     progress=self._upload_progress,
+                    reply_markup=buttons.build_menu(1),
                 )
             else:
                 key = "photos"

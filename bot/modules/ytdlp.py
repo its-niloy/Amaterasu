@@ -322,9 +322,9 @@ class YtDlp(TaskListener):
             "-t": "",
             "-ca": "",
             "-cv": "",
-            "-ns": "",
             "-tl": "",
             "-en": False,
+            "-enmeta": "",
             "-ff": set(),
         }
 
@@ -389,6 +389,7 @@ class YtDlp(TaskListener):
         self.bot_trans = args["-bt"]
         self.user_trans = args["-ut"]
         self.is_encode = args["-en"]
+        self.encode_metadata = args["-enmeta"]
         self.metadata_dict = self.default_metadata_dict.copy()
         self.audio_metadata_dict = self.audio_metadata_dict.copy()
         self.video_metadata_dict = self.video_metadata_dict.copy()
