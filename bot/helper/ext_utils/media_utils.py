@@ -708,7 +708,9 @@ class FFMpeg:
             "-i", input_file,
         ]
 
-        if hasattr(self._listener, "thumb") and self._listener.thumb:
+        is_mkv = output_file.lower().endswith(('.mkv', '.mka'))
+
+        if not is_mkv and hasattr(self._listener, "thumb") and self._listener.thumb:
             cmd.extend(["-i", self._listener.thumb])
 
         def add_map_flags(cmd_list, track_type, track_str):
@@ -730,7 +732,7 @@ class FFMpeg:
             add_map_flags(cmd, "s", s_track)
             cmd.extend(["-c:s", "copy"])
 
-        if hasattr(self._listener, "thumb") and self._listener.thumb:
+        if not is_mkv and hasattr(self._listener, "thumb") and self._listener.thumb:
             cmd.extend(["-map", "1", "-c:v:1", "copy", "-disposition:v:1", "attached_pic"])
 
         crf = v_params.get("crf", 30)
@@ -769,7 +771,10 @@ class FFMpeg:
                 else:
                     cmd.extend(["-metadata", f"{k}={v}"])
 
-        cmd.extend(["-threads", f"{threads}", output_file])
+        cmd.extend(["-threads", f"{threads}"])
+        if is_mkv and hasattr(self._listener, "thumb") and self._listener.thumb:
+            cmd.extend(["-attach", self._listener.thumb, "-metadata:s:t", "mimetype=image/jpeg"])
+        cmd.extend([output_file])
 
         if self._listener.is_cancelled:
             if custom_thumb_path:
