@@ -117,9 +117,16 @@ class MetadataProcessor:
         if stream_lang and stream_lang != "unknown":
             key = "audiolang" if stream_type == "audio" else "sublang"
             vars_with_stream[key] = full_lang or self.convert_lang_code(stream_lang)
+            
+        class SafeDict(dict):
+            def __missing__(self, key):
+                return "{" + key + "}"
+                
+        safe_vars = SafeDict(vars_with_stream)
+
         return {
             self.sanitize(k): (
-                str(v).format(**vars_with_stream) if isinstance(v, str) else str(v)
+                str(v).format_map(safe_vars) if isinstance(v, str) else str(v)
             )
             for k, v in metadata_dict.items()
         }
