@@ -149,5 +149,37 @@ export const OPTIONS = {
     { value: 2, label: "Stereo (2.0)" },
     { value: 6, label: "Surround (5.1)" },
     { value: 8, label: "Surround (7.1)" }
+  ],
+  formatProfiles: [
+    { value: "", label: "Default / Auto" },
+    { value: "0", label: "0 / Main (AV1)" },
+    { value: "1", label: "1 / High (AV1)" },
+    { value: "2", label: "2 / Professional (AV1)" },
+    { value: "baseline", label: "Baseline (H.264)" },
+    { value: "main", label: "Main (H.264/H.265)" },
+    { value: "high", label: "High (H.264)" },
+    { value: "high10", label: "High 10 (H.264)" },
+    { value: "main10", label: "Main 10 (H.265)" }
+  ],
+  formatLevels: [
+    { value: "", label: "Default / Auto" },
+    { value: "3.0", label: "3.0" },
+    { value: "3.1", label: "3.1" },
+    { value: "4.0", label: "4.0 (1080p30)" },
+    { value: "4.1", label: "4.1 (1080p60)" },
+    { value: "5.0", label: "5.0" },
+    { value: "5.1", label: "5.1 (4K)" },
+    { value: "5.2", label: "5.2" },
+    { value: "6.0", label: "6.0 (8K)" },
+    { value: "6.1", label: "6.1" },
+    { value: "6.2", label: "6.2" }
+  ],
+  colorSpaces: [
+    { value: "", label: "Default / Auto" },
+    { value: "bt709", label: "BT.709 (HD/SDR)" },
+    { value: "bt2020", label: "BT.2020 (HDR/UHD)" },
+    { value: "smpte170m", label: "SMPTE 170M (SD/NTSC)" },
+    { value: "smpte240m", label: "SMPTE 240M" },
+    { value: "bt470bg", label: "BT.470 BG (SD/PAL)" }
   ]
 };

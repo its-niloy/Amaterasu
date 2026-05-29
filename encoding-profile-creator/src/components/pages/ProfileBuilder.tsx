@@ -258,39 +258,39 @@ export const ProfileBuilder: React.FC<ProfileBuilderProps> = ({ initialData, onN
             />
           )}
 
-          <TextField
+          <SelectField
             label="Format Profile"
-            value={profile.video_params?.profile || ''}
+            value={profile.video_params?.profile?.toString() || ''}
             onChange={(e) => updateVideoParams({ profile: e.target.value })}
-            placeholder="e.g. 0, main, high"
+            options={OPTIONS.formatProfiles}
           />
 
-          <TextField
+          <SelectField
             label="Format Level"
             value={profile.video_params?.level || ''}
             onChange={(e) => updateVideoParams({ level: e.target.value })}
-            placeholder="e.g. 5.1"
+            options={OPTIONS.formatLevels}
           />
 
-          <TextField
+          <SelectField
             label="Color Primaries"
             value={profile.video_params?.color_primaries || ''}
             onChange={(e) => updateVideoParams({ color_primaries: e.target.value })}
-            placeholder="e.g. bt709"
+            options={OPTIONS.colorSpaces}
           />
 
-          <TextField
+          <SelectField
             label="Color Transfer (TRC)"
             value={profile.video_params?.color_trc || ''}
             onChange={(e) => updateVideoParams({ color_trc: e.target.value })}
-            placeholder="e.g. bt709"
+            options={OPTIONS.colorSpaces}
           />
 
-          <TextField
+          <SelectField
             label="Colorspace"
             value={profile.video_params?.colorspace || ''}
             onChange={(e) => updateVideoParams({ colorspace: e.target.value })}
-            placeholder="e.g. bt709"
+            options={OPTIONS.colorSpaces}
           />
 
           <div className="md:col-span-1">
