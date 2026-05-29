@@ -68,6 +68,7 @@
   - [User Commands](#user-commands)
   - [Media & File Tools](#media--file-tools)
   - [Admin / Sudo Commands](#admin--sudo-commands)
+- [🎞️ Encoding & Metadata](#encoding--metadata)
 - [🧰 Advanced Usage & Arguments](#advanced-usage--arguments)
   - [Argument Quick Reference](#argument-quick-reference)
   - [Telegram Link Downloads](#telegram-link-downloads)
@@ -768,6 +769,69 @@ All limits are in **GB**. Set `0` to disable the limit.
 | `/restart` | `/r` | Sudo | Restart the bot (pulls updates if `UPSTREAM_REPO` is set) |
 | `/restartses` | `/rses` | Sudo | Restart all user/helper sessions |
 | `/rss` | — | Authorized | Open the RSS feed management panel |
+
+---
+
+<a id="encoding--metadata"></a>
+
+## 🎞️ Encoding & Metadata
+
+Amaterasu features a powerful built-in FFmpeg encoding engine capable of transforming and optimizing media on the fly before uploading.
+
+### 1. Encode Profiles
+Instead of typing out complex FFmpeg commands every time, you can create and save **Encode Profiles** through your personal settings panel:
+1. Send `/usetting` in the chat.
+2. Navigate to **Encode Profiles** → **➕ Create Profile**.
+3. Submit a JSON configuration defining your preferred codecs and parameters.
+
+You can set any profile as your **Default**. The bot will automatically use this profile whenever you start an encoding task (e.g., using the `-en` flag).
+
+### 2. Supported Codecs
+- **Video**: `libsvtav1` (Next-gen AV1), `libx265` (HEVC/H.265), `libx264` (H.264), `copy`
+- **Audio**: `libopus`, `aac`, `copy`
+- **Subtitle**: `copy`, `none`
+
+### 3. Track Mapping & Metadata Injection
+You can dynamically isolate specific audio/subtitle tracks and inject custom metadata (titles, release years, track names) either directly into your **Encode Profile** or on the fly using the `-enmeta` command argument.
+
+#### A. In your Encode Profile (JSON)
+Include a `"metadata"` block in your profile configuration:
+```json
+{
+    "name": "Multi-Audio AV1 Encode",
+    "video_codec": "libsvtav1",
+    "audio_codec": "libopus",
+    "subtitle_mode": "copy",
+    "metadata": {
+        "title": "Dr. Stone S01E01",
+        "v_track": "0",
+        "a_track": "1",
+        "s_track": "0",
+        "s:v:0": "title=1080p SVT-AV1",
+        "s:a:0": "title=English Dubbed",
+        "s:s:0": "title=English Subtitles"
+    }
+}
+```
+
+#### B. On the Fly (Command Line)
+Override or apply metadata instantly using the `-enmeta` flag. Separate key-value pairs with a pipe `|`:
+```
+/leech <link> -en -enmeta "title=My Movie|v_track=0|a_track=1|s:a:0=title=English Audio"
+```
+
+**Track Selection Keys:**
+- `v_track`: Select which video track to keep (e.g., `0` for the first). Use `?` to keep all.
+- `a_track`: Select which audio track to keep (e.g., `1` for the second).
+- `s_track`: Select which subtitle track to keep.
+
+**Stream Specifiers:**
+- `s:v:0`: Applies metadata to the first video track.
+- `s:a:1`: Applies metadata to the second audio track.
+- `s:s:0`: Applies metadata to the first subtitle track.
+
+### 4. Cover Art Embedding
+When you set a custom thumbnail (via `/setthumb` or the `-t` argument), the bot will automatically embed that image as the official cover art (`attached_pic`) directly into the final MP4/MKV container during the encoding process.
 
 ---
 
