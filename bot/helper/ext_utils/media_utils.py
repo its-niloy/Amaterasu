@@ -179,10 +179,18 @@ async def get_media_info(path, extra_info=False):
             return (0, "", "", "") if extra_info else (0, None, None)
             
         duration = float(fields.get("duration", 0))
+        if duration == 0 and "tags" in fields and "DURATION" in fields["tags"]:
+            from ..ext_utils.status_utils import time_to_seconds
+            duration = float(time_to_seconds(fields["tags"]["DURATION"]))
         if duration == 0 and "streams" in ffresult:
             for stream in ffresult["streams"]:
                 if "duration" in stream:
                     duration = float(stream["duration"])
+                    if duration > 0:
+                        break
+                if "tags" in stream and "DURATION" in stream["tags"]:
+                    from ..ext_utils.status_utils import time_to_seconds
+                    duration = float(time_to_seconds(stream["tags"]["DURATION"]))
                     if duration > 0:
                         break
         duration = round(duration)
