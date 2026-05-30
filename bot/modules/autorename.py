@@ -235,9 +235,6 @@ async def auto_rename_handler(client, message):
         total_size = os.path.getsize(local_path)
         is_large = total_size > 52428800  # 50 MB
         
-        from bot.core.tg_client import TgClient
-        from bot.core.config_manager import Config
-        
         upload_client = client
         use_dump = False
         dump_chat = getattr(Config, "LEECH_DUMP_CHAT", "") or getattr(Config, "BIN_CHANNEL", "")
