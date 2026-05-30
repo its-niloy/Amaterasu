@@ -247,9 +247,9 @@ async def _handle_upload(client, query, user_id, upload_type):
             except Exception:
                 pass
         
-        download_dir = "downloads"
-        if not os.path.exists(download_dir):
-            os.makedirs(download_dir)
+        from bot import DOWNLOAD_DIR
+        download_dir = os.path.join(DOWNLOAD_DIR, str(media_msg.id))
+        os.makedirs(download_dir, exist_ok=True)
             
         local_path = await media_msg.download(
             file_name=os.path.join(download_dir, new_name),
@@ -334,13 +334,16 @@ async def _handle_upload(client, query, user_id, upload_type):
             )
             
         await delete_message(progress_msg)
-        
-        if os.path.exists(local_path):
-            os.remove(local_path)
-            
+
     except Exception as e:
         LOGGER.error(f"Error renaming file: {e}")
-        await edit_message(progress_msg, f"<b>⚑ ERROR:</b> <i>Failed to rename file. {str(e)}</i>")
+        await edit_message(
+            progress_msg, f"<b>⚑ ERROR:</b> <i>Failed to rename file. {e}</i>"
+        )
+    finally:
+        if 'download_dir' in locals() and os.path.exists(download_dir):
+            import shutil
+            shutil.rmtree(download_dir, ignore_errors=True)
         if 'local_path' in locals() and os.path.exists(local_path):
             os.remove(local_path)
 

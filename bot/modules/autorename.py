@@ -158,7 +158,8 @@ async def auto_rename_handler(client, message):
             except Exception:
                 pass
 
-        download_dir = "downloads"
+        from bot import DOWNLOAD_DIR
+        download_dir = os.path.join(DOWNLOAD_DIR, str(message.id))
         os.makedirs(download_dir, exist_ok=True)
 
         local_path = await message.download(
@@ -257,8 +258,9 @@ async def auto_rename_handler(client, message):
             f"<b>⚑ ERROR:</b> <i>Failed to auto-rename file. {e}</i>",
         )
     finally:
-        if local_path and os.path.exists(local_path):
-            os.remove(local_path)
+        if 'download_dir' in locals() and os.path.exists(download_dir):
+            import shutil
+            shutil.rmtree(download_dir, ignore_errors=True)
 
 
 # ── Register handlers ───────────────────────────────────────────
