@@ -402,20 +402,7 @@ def add_handlers():
         group=1,
     )
 
-    TgClient.bot.add_handler(
-        CallbackQueryHandler(
-            rename_callback_handler,
-            filters=regex("^(ren_choice_|leech_orig_|ren_up_)")
-        )
-    )
 
-    TgClient.bot.add_handler(
-        MessageHandler(
-            reply_listener,
-            filters=reply,
-        ),
-        group=2,
-    )
     if Config.SET_COMMANDS:
         global BOT_COMMANDS
 

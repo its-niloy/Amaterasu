@@ -62,7 +62,6 @@ from .ytdlp import ytdl, ytdl_leech
 from .speedtest import speedtest
 from .telegraph_upload import telegraph_upload
 from .filetolink import link_command_handler, private_media_handler
-from .rename import rename_callback_handler, reply_listener
 from .autorename import autorename_command, auto_rename_handler
 
 __all__ = [
