@@ -137,6 +137,10 @@ async def auto_rename_handler(client, message):
     )
 
     local_path = None
+    downloaded_thumb = False
+    thumb_path = f"thumbnails/{user_id}.jpg"
+    has_thumb = os.path.exists(thumb_path)
+    
     try:
         last_dl_edit = 0
 
@@ -175,8 +179,13 @@ async def auto_rename_handler(client, message):
             progress_msg, "<i>◷ Uploading auto-renamed file...</i>"
         )
 
-        thumb_path = f"thumbnails/{user_id}.jpg"
-        has_thumb = os.path.exists(thumb_path)
+        if not has_thumb:
+            media = _get_media(message)
+            if getattr(media, "thumbs", None):
+                thumb_path = await client.download_media(media.thumbs[0].file_id)
+                if thumb_path:
+                    has_thumb = True
+                    downloaded_thumb = True
 
         # Build caption
         custom_caption = f"<b>File Name:</b> <code>{new_name}</code>"
@@ -221,6 +230,13 @@ async def auto_rename_handler(client, message):
                     duration = metadata.get("duration").seconds
             except Exception:
                 pass
+
+        if not has_thumb and upload_type == "video":
+            from bot.helper.ext_utils.media_utils import get_video_thumbnail
+            thumb_path = await get_video_thumbnail(local_path, duration)
+            if thumb_path:
+                has_thumb = True
+                downloaded_thumb = True
 
         common_kwargs = dict(
             caption=custom_caption,
@@ -272,6 +288,8 @@ async def auto_rename_handler(client, message):
             f"<b>⚑ ERROR:</b> <i>Failed to auto-rename file. {e}</i>",
         )
     finally:
+        if downloaded_thumb and thumb_path and os.path.exists(thumb_path):
+            os.remove(thumb_path)
         if 'download_dir' in locals() and os.path.exists(download_dir):
             import shutil
             shutil.rmtree(download_dir, ignore_errors=True)
