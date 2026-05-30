@@ -186,9 +186,15 @@ async def link_command_handler(client, message):
 
 async def private_media_handler(client, message):
     from pyrogram import ContinuePropagation
+    from bot import user_data
     if not Config.BASE_URL:
         raise ContinuePropagation
     if not get_media(message):
+        raise ContinuePropagation
+
+    user_id = message.from_user.id
+    user_dict = user_data.get(user_id, {})
+    if not user_dict.get("AUTO_FILETOLINK", True):
         raise ContinuePropagation
 
     await process_media_message(client, message, message)

@@ -337,6 +337,7 @@ async def get_user_settings(from_user, stype="main"):
                 "HYBRID_LEECH",
                 "STOP_DUPLICATE",
                 "DEFAULT_UPLOAD",
+                "AUTO_FILETOLINK",
             ]
         ):
             buttons.data_button(
@@ -871,6 +872,13 @@ async def get_user_settings(from_user, stype="main"):
             "YT Cookie File", f"userset {user_id} menu USER_COOKIE_FILE"
         )
 
+        if user_dict.get("AUTO_FILETOLINK", True):
+            buttons.data_button("Disable Auto FileToLink", f"userset {user_id} tog AUTO_FILETOLINK f")
+            auto_ftl = "Enabled"
+        else:
+            buttons.data_button("Enable Auto FileToLink", f"userset {user_id} tog AUTO_FILETOLINK t")
+            auto_ftl = "Disabled"
+
         buttons.data_button("↩ BACK", f"userset {user_id} back", "footer")
         buttons.data_button("✕ CLOSE", f"userset {user_id} close", "footer")
         btns = buttons.build_menu(1)
@@ -879,6 +887,7 @@ async def get_user_settings(from_user, stype="main"):
 <code>├─ Name       : </code>{user_name}
 <code>├─ Name Swap  : {ns_msg}</code>
 <code>├─ Auto-Rename: {ar_msg}</code>
+<code>├─ Auto F2Link: {auto_ftl}</code>
 <code>├─ Exclud Exts: {ex_ex}</code>
 <code>├─ Up Paths   : {upload_paths}</code>
 <code>├─ YT-DLP Opts: {ytopt}</code>
@@ -1412,6 +1421,8 @@ async def edit_user_settings(client, query):
             back_to = "gdrive"
         elif data[3] in ["USER_TOKENS", "USE_DEFAULT_COOKIE"]:
             back_to = "general"
+        elif data[3] == "AUTO_FILETOLINK":
+            back_to = "advanced"
         else:
             back_to = "leech"
         await update_user_settings(query, stype=back_to)
