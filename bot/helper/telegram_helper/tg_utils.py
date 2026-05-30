@@ -84,7 +84,7 @@ async def verify_token(user_id, button=None):
     if not Config.VERIFY_TIMEOUT or bool(
         user_id == Config.OWNER_ID
         or user_id in user_data
-        and user_data[user_id].get("is_sudo")
+        and user_data[user_id].get("SUDO")
     ):
         return None, button
     user_data.setdefault(user_id, {})

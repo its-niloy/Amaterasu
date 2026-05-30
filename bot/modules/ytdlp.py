@@ -339,7 +339,7 @@ class YtDlp(TaskListener):
             return
 
         from .. import sudo_users, user_data
-        is_sudo = self.message.from_user.id == Config.OWNER_ID or self.message.from_user.id in sudo_users or user_data.get(self.message.from_user.id, {}).get("is_sudo")
+        is_sudo = self.message.from_user.id == Config.OWNER_ID or self.message.from_user.id in sudo_users or user_data.get(self.message.from_user.id, {}).get("SUDO")
         if args.get("-en") and not is_sudo:
             await send_message(self.message, "Encoding is restricted to sudo users only.")
             return

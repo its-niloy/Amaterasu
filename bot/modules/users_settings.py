@@ -317,7 +317,7 @@ async def get_user_settings(from_user, stype="main"):
         buttons.data_button("⚙ Uphoster Settings", f"userset {user_id} uphoster")
         buttons.data_button("⚙ FF Media Settings", f"userset {user_id} ffset")
         
-        is_sudo = user_id == Config.OWNER_ID or user_id in sudo_users or user_dict.get("is_sudo")
+        is_sudo = user_id == Config.OWNER_ID or user_id in sudo_users or user_dict.get("SUDO")
         if is_sudo:
             buttons.data_button("🎬 Encode Profiles", f"userset {user_id} encode")
             
