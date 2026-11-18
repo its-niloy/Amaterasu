@@ -7,8 +7,8 @@ import { defineConfig } from "vite";
 // matching page, and every page shares the same tokens, base CSS and ui/.
 //
 // Output lands in web/static/dist with content-hashed names plus
-// .vite/manifest.json. FastAPI reads the manifest (web/wserver.py,
-// _ui_assets) and base.html links the hashed entry, so caches never serve a
+// .vite/manifest.json. FastAPI reads the manifest and base.html links the
+// hashed entry, so caches never serve a
 // stale bundle and every chunk imports the one shared runtime.
 export default defineConfig({
   plugins: [svelte()],

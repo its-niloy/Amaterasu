@@ -282,23 +282,20 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(filetolink_router)
-app.mount("/static", StaticFiles(directory="web/static"), name="static")
 templates = Jinja2Templates(directory="web/templates")
 
 
-def _ui_assets() -> dict:
-    """Entry files of the shared Svelte design system (web/ui).
-
-    `npm run build` in web/ui (a Docker build stage in production) writes
-    content-hashed files and .vite/manifest.json to web/static/dist. Every
-    page template links these via base.html. A missing build yields empty
-    values so the server still starts; pages then show their noscript note.
-    """
-    manifest = Path(__file__).parent / "static" / "dist" / ".vite" / "manifest.json"
+def _mount_ui_assets(app: FastAPI) -> dict:
+    """Serve the same build that supplies the hashed entry files to Jinja."""
+    local_dist = Path(__file__).parent / "static" / "dist"
+    dist = Path(environ.get("AMATERASU_UI_DIST") or local_dist)
+    manifest = dist / ".vite" / "manifest.json"
     try:
         entry = json_loads(manifest.read_text(encoding="utf-8"))["src/main.ts"]
-    except (OSError, ValueError, KeyError):
+    except (OSError, ValueError, KeyError) as error:
+        LOGGER.warning("Web UI manifest unavailable at %s: %s", manifest, error)
         return {"js": "", "css": [], "version": "dev"}
+    app.mount("/static/dist", StaticFiles(directory=dist), name="web-ui")
     return {
         "js": f"/static/dist/{entry['file']}",
         "css": [f"/static/dist/{css}" for css in entry.get("css", [])],
@@ -306,7 +303,8 @@ def _ui_assets() -> dict:
     }
 
 
-_UI_ASSETS = _ui_assets()
+_UI_ASSETS = _mount_ui_assets(app)
+app.mount("/static", StaticFiles(directory="web/static"), name="static")
 # Kept for the player/playlist routes, which pass it to their templates.
 _PLAYER_ASSET_VERSION = _UI_ASSETS["version"]
 templates.env.globals["ui_assets"] = _UI_ASSETS

@@ -17,8 +17,8 @@ system, so a change here updates every page. The visual direction is in
    {% block page_data %}{{ {"user_id": user_id}|tojson }}{% endblock %}
    ```
 
-3. `base.html` links the built bundle. `web/wserver.py` (`_ui_assets`) reads
-   the hashed file names from `static/dist/.vite/manifest.json`.
+3. `base.html` links the built bundle. `web/wserver.py` reads the hashed
+   file names from the Vite manifest and serves that build at `/static/dist`.
 4. `src/main.ts` loads the shared CSS and lazily imports
    `src/pages/<name>/Page.svelte`. It mounts the page with the JSON as
    `data`.
@@ -59,6 +59,6 @@ npm run build     # production build (Docker runs this in the web-ui stage)
 npm run check     # svelte-check
 ```
 
-The Docker image builds this folder in a Node stage and copies only
-`web/static/dist` into the runtime image. `web/static/dist` and
-`node_modules` are git-ignored.
+The Docker image builds this folder in a Node stage and copies the built
+assets to `/opt/amaterasu-ui`, outside the Compose checkout mount. Local
+builds use `web/static/dist`. That directory and `node_modules` are git-ignored.

@@ -1,4 +1,8 @@
 import ast
+from hashlib import sha256
+from json import dumps, loads
+from logging import getLogger
+from os import environ
 from datetime import datetime, timezone
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
@@ -8,6 +12,9 @@ from types import ModuleType, SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.testclient import TestClient
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -100,6 +107,54 @@ def test_login_is_a_design_system_page_not_inline_html():
     assert "_LOGIN_PAGE_HTML" not in source
     assert '"login.html"' in source
     assert (ROOT / "web/ui/src/pages/login/Page.svelte").is_file()
+
+
+@pytest.mark.parametrize("image_build", [False, True])
+def test_player_bundle_is_served_from_manifest_directory(tmp_path, monkeypatch, image_build):
+    checkout = tmp_path / "checkout"
+    static = checkout / "web" / "static"
+    static.mkdir(parents=True)
+    (static / "legacy.css").write_text("body {}", encoding="utf-8")
+    monkeypatch.chdir(checkout)
+    dist = tmp_path / "image-ui" if image_build else static / "dist"
+    (dist / ".vite").mkdir(parents=True)
+    if image_build:
+        monkeypatch.setenv("AMATERASU_UI_DIST", str(dist))
+        assert not (static / "dist").exists()
+    else:
+        monkeypatch.delenv("AMATERASU_UI_DIST", raising=False)
+
+    bundle = "main-fixture.js"
+    (dist / bundle).write_text("export {};", encoding="utf-8")
+    (dist / ".vite" / "manifest.json").write_text(
+        dumps({"src/main.ts": {"file": bundle}}), encoding="utf-8"
+    )
+    source = ast.parse((ROOT / "web/wserver.py").read_text(encoding="utf-8"))
+    nodes = [node for node in source.body if (
+        isinstance(node, ast.FunctionDef) and node.name == "_mount_ui_assets"
+        or isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == "_UI_ASSETS" for target in node.targets
+        )
+        or isinstance(node, ast.Expr) and ast.unparse(node).startswith("app.mount('/static',")
+    )]
+    app = FastAPI()
+    namespace = {
+        "app": app, "FastAPI": FastAPI, "StaticFiles": StaticFiles,
+        "__file__": str(checkout / "web" / "wserver.py"), "Path": Path,
+        "environ": environ, "json_loads": loads, "sha256": sha256, "LOGGER": getLogger(__name__),
+    }
+    exec(compile(ast.Module(body=nodes, type_ignores=[]), "wserver.py", "exec"), namespace)
+    assets = namespace["_UI_ASSETS"]
+    environment = Environment(loader=FileSystemLoader(ROOT / "web/templates"))
+    rendered = environment.get_template("player.html").render(
+        **_web_branding_context(), ui_assets=assets
+    )
+    assert f'<script type="module" src="/static/dist/{bundle}">' in rendered
+    with TestClient(app) as client:
+        response = client.get(assets["js"])
+        assert response.status_code == 200
+        assert response.text == "export {};"
+        assert client.get("/static/legacy.css").status_code == 200
 
 
 def test_brand_mark_is_the_blackflare_flame_in_ink():

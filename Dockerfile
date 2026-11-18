@@ -61,8 +61,9 @@ RUN /amaterasuvenv/bin/uv pip install --python /amaterasuvenv/bin/python --no-ca
 
 # Copy all the project files
 COPY . .
-# Built web UI (hashed assets + .vite/manifest.json read by web/wserver.py)
-COPY --from=web-ui /src/web/static/dist ./web/static/dist
+# Keep built assets outside the Compose checkout mount at /usr/src/app.
+ENV AMATERASU_UI_DIST=/opt/amaterasu-ui
+COPY --from=web-ui /src/web/static/dist ${AMATERASU_UI_DIST}
 
 # Setup permissions and convert Windows line endings to Unix just in case
 RUN sed -i 's/\r$//' *.sh \
