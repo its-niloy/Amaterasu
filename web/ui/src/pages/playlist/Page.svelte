@@ -75,6 +75,12 @@
         method: "POST",
         headers: { "X-Amaterasu-Action": "archive" },
       });
+      if (!ticket.status_url) {
+        zipHref = ticket.download_url;
+        zipState = "ready";
+        zipMessage = "The ZIP downloads directly as it is built. Interrupted downloads restart from the beginning.";
+        return;
+      }
       let failures = 0;
       while (true) {
         let state;
@@ -174,7 +180,11 @@
           </div>
         </div>
 
-        <p class="note" role="status" aria-live="polite">{zipMessage}</p>
+        {#if zipState === "error"}
+          <Feedback tone="danger">{zipMessage}</Feedback>
+        {:else}
+          <p class="note" role="status" aria-live="polite">{zipMessage}</p>
+        {/if}
 
         {#if zipState === "working"}
           {#if zipProgress === null}
@@ -182,10 +192,6 @@
           {:else}
             <Progress value={Math.round(zipProgress * 100)} label="ZIP preparation progress" />
           {/if}
-        {/if}
-
-        {#if zipState === "error"}
-          <Feedback tone="danger">The ZIP is not ready. Individual downloads still work.</Feedback>
         {/if}
 
         {#if zipState === "ready" && zipHref}
