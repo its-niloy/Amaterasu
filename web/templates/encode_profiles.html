@@ -3,4 +3,4 @@
 {#- The page reads user_id/token from the signed link's query string; with
     neither it runs in offline mode and keeps profiles in this browser. -#}
 {% block page %}encode-profiles{% endblock %}
-{% block page_data %}{}{% endblock %}
+{% block page_data %}{{ {"has_5fish": has_5fish}|tojson }}{% endblock %}

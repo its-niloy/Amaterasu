@@ -246,7 +246,7 @@ class TaskListener(TaskConfig):
             default_profile = {}
         default_codec = str(default_profile.get("video_codec", "libx264")).lower()
         default_codec = {
-            "libsvtav1": "SVT-AV1",
+            "libsvtav1": "SVT-AV1 (5fish)" if default_profile.get("svtav1_variant") == "5fish" else "SVT-AV1",
             "libx264": "H.264",
             "libx265": "HEVC",
             "libvpx-vp9": "VP9",
@@ -374,7 +374,11 @@ class TaskListener(TaskConfig):
             chosen = self.encode_profile
         if self.is_cancelled or chosen is None:
             return False
-        normalized, warnings = normalize_encode_profile(chosen)
+        try:
+            normalized, warnings = normalize_encode_profile(chosen)
+        except ValueError as error:
+            await send_message(self.message, f"The merge encode profile needs correction before downloading: {error}")
+            return False
         if warnings:
             await send_message(
                 self.message,

@@ -1358,11 +1358,22 @@ not safely compatible with the source container. Every completed encode is
 probed and seek-decoded at multiple timestamps before the source is removed. If
 that validation fails, the invalid output is deleted and the source is kept.
 
-SVT-AV1 profiles use FFmpeg's native CRF and preset controls, stay within the
+The Profile Creator starts with **Output container**. Choose **Auto** to keep
+automatic selection, or save `"container": "mkv"`, `"mp4"`, `"mov"`, or `"webm"`
+in the profile. Choose MKV to keep ASS subtitles and attached fonts. Copied
+streams must be compatible with the chosen container. Continuous merge encoding
+uses MKV and accepts Auto or MKV profiles.
+
+Standard SVT-AV1 profiles use FFmpeg's native CRF and preset controls, stay within the
 bot's assigned CPU set, and default to preset `6`, a ten-second seek interval,
 and fast-decode bitstreams. Existing profiles remain compatible: legacy
 `extra_params` such as film grain, `tune`, and explicit `keyint` values are
 preserved, while named profile fields remain authoritative for CRF and preset.
+
+For anime, select **AV1 (SVT-AV1)** under Video Codec and **SVT-AV1 (5fish · Anime)**
+under SVT-AV1 encoder. The starter settings are 10-bit, preset 2 and CRF 26,
+with line-art and texture bias set to 3. This option requires a base image
+built from the updated `Dockerfile.base` and is available for regular `-en` jobs.
 
 ### 3. Track Mapping & Metadata Injection
 You can dynamically isolate specific audio/subtitle tracks and inject custom metadata (titles, release years, track names) either directly into your **Encode Profile** or on the fly using the `-enmeta` command argument.
@@ -1536,7 +1547,9 @@ The **Video Settings** section is open by default. Here you can configure:
 
 | Setting | Description | UI Element |
 |---|---|---|
+| **Output Container** | Auto, MKV, MP4, MOV, or WebM | Dropdown |
 | **Video Codec** | The encoder to use (`libsvtav1`, `libx265`, `libx264`, or `copy`) | Dropdown |
+| **SVT-AV1 encoder** | Standard or 5fish (Anime) when AV1 is selected | Dropdown |
 | **CRF (Quality)** | Quality level — lower = better quality, larger file. `28-34` is a practical AV1 range. | Slider with live label |
 | **Preset / Speed** | Encoding speed vs compression tradeoff. Slower = smaller files. | Dropdown |
 | **Pixel Format** | Bit depth. `yuv420p10le` recommended for 10-bit AV1/HEVC. | Dropdown |

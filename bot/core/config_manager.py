@@ -710,5 +710,6 @@ class BinConfig:
     # use /usr/bin. Resolve it at startup so every encode/thumbnail command
     # uses the binary that is actually present in the image.
     FFMPEG_NAME = which("ffmpeg") or "/usr/bin/ffmpeg"
+    FFMPEG_5FISH_NAME = which("/opt/amaterasu-5fish/bin/ffmpeg")
     RCLONE_NAME = "rclone"
     SABNZBD_NAME = "sabnzbdplus"

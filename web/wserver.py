@@ -653,6 +653,115 @@ async def get_bot_status():
     })
 
 
+
+# ────────────────────────────────────────────────────────────────────
+# Live logs (owner and sudo only)
+# ────────────────────────────────────────────────────────────────────
+# Logs can reveal file names, chats and paths even after redaction, so they
+# are never public: not even when LOGIN_PASS is unset. Access is either a
+# signed "live-logs" link the bot sends privately to an owner/sudo user
+# (from /log or /status), or a valid LOGIN_PASS session cookie.
+LIVE_LOGS_PURPOSE = "live-logs"
+
+
+def _live_logs_viewer(request: Request) -> bool:
+    user_id = request.query_params.get("user_id", "")
+    token = request.query_params.get("token")
+    if user_id and token:
+        try:
+            if verify_signed_token(token, _web_secret(), LIVE_LOGS_PURPOSE, int(user_id)):
+                return True
+        except ValueError:
+            pass
+    if _login_pass_configured():
+        return _verify_session_cookie(request.cookies.get("amaterasu_session"))
+    return False
+
+
+def _require_live_logs_viewer(request: Request) -> None:
+    if not _live_logs_viewer(request):
+        raise HTTPException(
+            status_code=403,
+            detail="Live logs are private. Open the link from /log or /status in Telegram, or sign in.",
+        )
+
+
+@app.get("/app/logs", response_class=HTMLResponse)
+async def live_logs_page(request: Request):
+    authorized = _live_logs_viewer(request)
+    response = templates.TemplateResponse(
+        request,
+        "logs.html",
+        {
+            "authorized": authorized,
+            "login_enabled": _login_pass_configured(),
+        },
+        status_code=200 if authorized else 403,
+    )
+    return _no_store(response)
+
+
+@app.get("/api/logs/access")
+async def live_logs_access(request: Request):
+    """Lets the public landing page decide whether to show the viewer."""
+    return _no_store(JSONResponse({
+        "authorized": _live_logs_viewer(request),
+        "login_enabled": _login_pass_configured(),
+    }))
+
+
+@app.get("/api/logs/stream")
+async def live_logs_stream(request: Request):
+    """Server-sent events: a redacted backlog, then new lines as written.
+
+    Each event carries ``{"lines": [...], "rotated": bool}`` and an ``id``
+    cursor, so the browser's automatic reconnect resumes without gaps or
+    duplicates (Last-Event-ID).
+    """
+    _require_live_logs_viewer(request)
+    from web.live_logs import follow, parse_cursor
+
+    cursor = parse_cursor(request.headers.get("last-event-id"))
+
+    async def events():
+        yield "retry: 3000\n\n"
+        idle = 0
+        async for lines, pos, rotated in follow(cursor=cursor):
+            if await request.is_disconnected():
+                break
+            if lines or rotated:
+                idle = 0
+                payload = json_dumps({"lines": lines, "rotated": rotated})
+                yield f"id: {pos}\ndata: {payload}\n\n"
+            else:
+                idle += 1
+                if idle % 30 == 0:  # ~15 s: keep proxies from closing the stream
+                    yield ": keep-alive\n\n"
+
+    response = StreamingResponse(events(), media_type="text/event-stream")
+    response.headers["X-Accel-Buffering"] = "no"
+    return _no_store(response)
+
+
+@app.get("/api/logs/download")
+async def live_logs_download(request: Request):
+    """The current log file, redacted, as a text download."""
+    _require_live_logs_viewer(request)
+    from datetime import datetime
+    from web.live_logs import read_redacted_log
+
+    try:
+        text = await to_thread(read_redacted_log)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="log.txt not found") from None
+    name = f"amaterasu-log-{datetime.now().strftime('%Y%m%d-%H%M%S')}.txt"
+    response = Response(
+        text,
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{name}"'},
+    )
+    return _no_store(response)
+
 @app.get("/healthz")
 async def healthz():
     """Lightweight health check for k8s/LB probes.
@@ -779,9 +888,15 @@ async def _read_profile_data(request: Request) -> dict:
         raise HTTPException(status_code=400, detail="Profile must be an object")
     if not isinstance(data.get("name"), str) or not data["name"].strip():
         raise HTTPException(status_code=400, detail="Profile name is required")
+    from bot.core.config_manager import BinConfig
     from bot.helper.ext_utils.media_utils import normalize_encode_profile
 
-    normalized, _ = normalize_encode_profile(data)
+    try:
+        normalized, _ = normalize_encode_profile(data)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    if normalized.get("svtav1_variant") == "5fish" and not BinConfig.FFMPEG_5FISH_NAME:
+        raise HTTPException(status_code=503, detail="SVT-AV1 (5fish · Anime) requires an updated Amaterasu base image.")
     return normalized
 
 
@@ -834,7 +949,10 @@ async def files(request: Request):
 
 @app.get("/app/encode-profiles", response_class=HTMLResponse)
 async def encode_profiles_page(request: Request):
-    response = templates.TemplateResponse(request, "encode_profiles.html")
+    response = templates.TemplateResponse(
+        request, "encode_profiles.html",
+        {"has_5fish": bool(which("/opt/amaterasu-5fish/bin/ffmpeg"))},
+    )
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
@@ -2192,6 +2310,10 @@ _SIGNED_USER_TOOL_PATH_PREFIXES = (
     # Every handler under these paths calls its own _require_*_user check.
     "/app/session-generator",
     "/api/profiles",
+    # Live logs: every handler calls _live_logs_viewer() itself and accepts
+    # either a signed owner/sudo link or the LOGIN_PASS session cookie.
+    "/app/logs",
+    "/api/logs/",
 )
 # The encode-profiles page itself renders without a token (owner offline
 # mode), so it only bypasses the owner login when a valid per-user

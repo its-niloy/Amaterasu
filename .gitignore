@@ -63,6 +63,7 @@ tests/*
 !tests/test_filetolink_streaming.py
 !tests/test_filetolink_library.py
 !tests/player_runtime.test.cjs
+!tests/encode_profile_model.test.mjs
 !tests/test_adaptive_tg_stream.py
 !tests/test_hyperdl_routing.py
 !tests/test_hypertg_efficiency.py

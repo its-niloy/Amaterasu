@@ -31,6 +31,7 @@ jobs:
           cache-dependency-path: web/ui/package-lock.json
       - run: npm ci --no-audit --no-fund
       - run: npm run check -- --threshold error
+      - run: node --test ../../tests/encode_profile_model.test.mjs
       - run: npm run build
 
   go-sidecar:
@@ -117,7 +118,7 @@ jobs:
       - name: Run lightweight smoke tests
         run: |
           test_files=""
-          for file in tests/test_config.py tests/test_security.py tests/test_multimedia_stack.py; do
+          for file in tests/test_config.py tests/test_security.py tests/test_multimedia_stack.py tests/test_encoding_playback_safety.py; do
             if [ -f "$file" ]; then
               test_files="$test_files $file"
             fi

@@ -31,6 +31,7 @@
     FPS_MODES,
     KEYINT_SECONDS,
     LEVELS,
+    OUTPUT_CONTAINERS,
     PIXEL_FORMAT_OPTIONS,
     QUICK_PRESETS,
     RENAME_TOKENS,
@@ -40,8 +41,10 @@
     VIDEO_CODECS,
     alignPixelFormatForProfile,
     applyPreset,
+    applySvtVariant,
     applyVideoCodec,
     cleanProfiles,
+    containerError,
     crfHint,
     defaultForm,
     exportJSON,
@@ -56,9 +59,7 @@
     type Profile,
   } from "./profile";
 
-  // The route passes no server data; the signed link's user_id/token query
-  // parameters are read by ./profile (offline mode when they are absent).
-  let { data: _data }: { data: Record<string, unknown> } = $props();
+  let { data }: { data: Record<string, unknown> } = $props();
 
   let form = $state(defaultForm());
   let currentProfileId = $state<string | null>(null);
@@ -78,6 +79,7 @@
   let importError = $state("");
 
   const profile = $derived(getProfileJSON(form));
+  const containerProblem = $derived(containerError(profile));
   const previewText = $derived(mode === "json" ? exportJSON(profile) : getFFmpegCmd(profile));
   const ids = $derived(Object.keys(profiles));
   const editingName = $derived(currentProfileId ? (profiles[currentProfileId]?.name ?? form.name) : null);
@@ -93,6 +95,7 @@
     {
       label: "Editor",
       items: [
+        { label: "Container", href: "#container", glyph: Film },
         { label: "Presets", href: "#presets", glyph: Sparkles },
         { label: "Identity", href: "#identity", glyph: IdCard },
         { label: "Video", href: "#video", glyph: Film },
@@ -123,6 +126,10 @@
 
   async function save() {
     if (saving) return;
+    if (containerProblem) {
+      error = containerProblem;
+      return;
+    }
     saving = true;
     error = "";
     try {
@@ -147,7 +154,12 @@
   }
 
   function edit(id: string) {
-    form = formFromProfile(profiles[id]);
+    try {
+      form = formFromProfile(profiles[id]);
+    } catch (err) {
+      fail("Could not open the profile", err);
+      return;
+    }
     currentProfileId = id;
     error = "";
     toast.show(`Editing “${profiles[id].name || "Unnamed profile"}”`);
@@ -238,14 +250,16 @@
     e.preventDefault();
     try {
       const parsed = JSON.parse(importText);
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("not an object");
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new SyntaxError();
       form = formFromProfile(parsed);
       currentProfileId = null;
       importOpen = false;
       toast.show("Profile imported into the editor");
       void goToEditor();
-    } catch {
-      importError = "That is not valid profile JSON. Paste the JSON copied from a saved profile.";
+    } catch (err) {
+      importError = err instanceof Error && !(err instanceof SyntaxError)
+        ? err.message
+        : "That is not valid profile JSON. Paste the JSON copied from a saved profile.";
     }
   }
 
@@ -372,7 +386,7 @@
                       {#if p.is_default}<span class="pill" data-tone="accent"><Icon icon={Star} size={12} /> Default</span>{/if}
                     </span>
                     <span class="row-meta profile-meta">
-                      <span><Icon icon={Film} size={13} /> {p.video_codec || "copy"}</span>
+                      <span><Icon icon={Film} size={13} /> {p.svtav1_variant === "5fish" ? "SVT-AV1 (5fish · Anime)" : p.video_codec || "copy"}</span>
                       <span><Icon icon={Music} size={13} /> {p.audio_codec || "copy"}</span>
                       {#if p.video_params?.preset !== undefined}<span>Preset {p.video_params.preset}</span>{/if}
                       {#if p.video_params?.crf !== undefined}<span class="num">CRF {p.video_params.crf}</span>{/if}
@@ -473,6 +487,32 @@
 
       <div class="split editor-split">
         <div class="editor-main">
+          <section id="container" class="panel" aria-labelledby="container-title">
+            <div class="panel-head">
+              <div class="tile-head">
+                <span class="tile"><Icon icon={Film} size={17} /></span>
+                <div><h3 id="container-title">Output container</h3></div>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="field">
+                <Select
+                  id="output-container"
+                  label="Output container"
+                  value={form.container}
+                  options={OUTPUT_CONTAINERS}
+                  describedby="container-note"
+                  onchange={(value) => (form.container = value)}
+                />
+                <p id="container-note" class="note" aria-live="polite">
+                  {containerProblem || (form.container === "auto" || form.container === "mkv"
+                    ? "MKV keeps ASS subtitles and attached fonts."
+                    : "Copied tracks must be compatible with this container. Choose MKV to keep ASS subtitles and attached fonts.")}
+                </p>
+              </div>
+            </div>
+          </section>
+
           <!-- Presets -->
           <section id="presets" class="panel" aria-labelledby="presets-title">
             <div class="panel-head">
@@ -547,6 +587,25 @@
                   </div>
                 {/if}
               </div>
+
+              {#if form.vCodec === "libsvtav1"}
+                <div class="field">
+                  <label for="v-svt-variant">SVT-AV1 encoder</label>
+                  <Select
+                    id="v-svt-variant"
+                    value={form.svtVariant}
+                    options={[
+                      { value: "standard", label: "SVT-AV1 (Standard)" },
+                      { value: "5fish", label: "SVT-AV1 (5fish · Anime)", disabled: !data.has_5fish },
+                    ]}
+                    describedby={data.has_5fish ? undefined : "v-svt-variant-note"}
+                    onchange={(v) => applySvtVariant(form, v)}
+                  />
+                  {#if !data.has_5fish}
+                    <p class="note" id="v-svt-variant-note">5fish requires an updated Amaterasu base image.</p>
+                  {/if}
+                </div>
+              {/if}
 
               {#if !isVideoCopy}
                 <div class="field">

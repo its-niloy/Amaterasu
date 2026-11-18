@@ -15,6 +15,8 @@
   import Icon from "../../ui/Icon.svelte";
   import Feedback from "../../ui/Feedback.svelte";
   import Flame from "./Flame.svelte";
+  import Lock from "@lucide/svelte/icons/lock";
+  import LogViewer from "../../ui/LogViewer.svelte";
 
   // Public overview of this instance: what Amaterasu is, its live status
   // (polled from /api/status every 3s) and its components. The hero carries
@@ -42,6 +44,7 @@
       items: [
         { label: "Overview", href: "#overview", icon: "home", current: true },
         { label: "Live status", href: "#status", icon: "pulse" },
+        { label: "Live logs", href: "#logs", icon: "list" },
         { label: "Components", href: "#components", icon: "layers" },
       ],
     },
@@ -97,12 +100,25 @@
     }
   }
 
+  // Live logs are private: shown inline only to a signed-in owner session.
+  let logAccess = $state<{ authorized: boolean; login_enabled: boolean } | null>(null);
+
+  async function checkLogAccess() {
+    try {
+      const res = await fetch("/api/logs/access", { headers: { Accept: "application/json" } });
+      logAccess = res.ok ? await res.json() : { authorized: false, login_enabled: false };
+    } catch {
+      logAccess = { authorized: false, login_enabled: false };
+    }
+  }
+
   const botReporting = $derived(status ? status.bot_reporting !== false : false);
 
   const pct = (n: number | undefined) =>
     n == null || !Number.isFinite(Number(n)) ? "—" : `${Math.round(Number(n))}`;
 
   onMount(() => {
+    void checkLogAccess();
     void refresh();
     let timer = setInterval(refresh, 3000);
     // Stop polling while the tab is hidden; catch up when it returns.
@@ -249,6 +265,43 @@
       </div>
     </section>
 
+    <section id="logs" aria-labelledby="logs-title" class="section">
+      <div class="page-head">
+        <div>
+          <h2 id="logs-title">Live logs</h2>
+          <p>The bot's log as it is written, with secrets redacted.</p>
+        </div>
+        {#if logAccess?.authorized}
+          <div class="page-actions">
+            <a class="btn" href="/app/logs">
+              Open full view <Icon icon={ArrowUpRight} size={16} />
+            </a>
+          </div>
+        {/if}
+      </div>
+
+      {#if logAccess === null}
+        <div class="skeleton logs-skeleton" aria-hidden="true"></div>
+      {:else if logAccess.authorized}
+        <LogViewer height="min(55svh, 30rem)" />
+      {:else}
+        <div class="empty">
+          <span class="empty-mark"><Icon icon={Lock} size={22} /></span>
+          <h3>Logs are private</h3>
+          <p>
+            Only the owner and sudo users can read them. Send <code>/log</code> or
+            <code>/status</code> to the bot and press <strong>Live logs</strong> for a private
+            link{logAccess.login_enabled ? ", or sign in to watch them here" : ""}.
+          </p>
+          {#if logAccess.login_enabled}
+            <a class="btn btn-primary" href="/login?next=/%23logs">
+              <Icon name="log-in" size={16} /> Sign in
+            </a>
+          {/if}
+        </div>
+      {/if}
+    </section>
+
     <section id="components" aria-labelledby="components-title" class="section">
       <div class="page-head">
         <div>
@@ -377,6 +430,11 @@
 
   .section .page-head {
     margin-bottom: 0;
+  }
+
+  .logs-skeleton {
+    height: 18rem;
+    border-radius: var(--radius-lg);
   }
 
   .stat-bar {

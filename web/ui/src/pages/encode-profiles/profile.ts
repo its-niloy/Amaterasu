@@ -62,8 +62,16 @@ export const QUICK_PRESETS: Profile[] = [
   },
 ];
 
+export const OUTPUT_CONTAINERS: Option[] = [
+  { value: "auto", label: "Auto (use source when compatible)" },
+  { value: "mkv", label: "Matroska (.mkv)" },
+  { value: "mp4", label: "MP4 (.mp4)" },
+  { value: "mov", label: "QuickTime (.mov)" },
+  { value: "webm", label: "WebM (.webm)" },
+];
+
 export const VIDEO_CODECS: Option[] = [
-  { value: "libsvtav1", label: "SVT-AV1 (Best for 4K/HDR)" },
+  { value: "libsvtav1", label: "AV1 (SVT-AV1)" },
   { value: "libx265", label: "H.265 / HEVC (Best for 1080p)" },
   { value: "libx264", label: "H.264 / AVC (Most Compatible)" },
   { value: "libvpx-vp9", label: "VP9 (YouTube format)" },
@@ -296,7 +304,9 @@ export function matchesPrefix(key: string, prefix: string): boolean {
 // ── Editor form state ───────────────────────────────────────────────
 export interface Form {
   name: string;
+  container: string;
   vCodec: string;
+  svtVariant: string;
   pixFmt: string;
   crf: number;
   preset: string;
@@ -325,7 +335,9 @@ export interface Form {
 export function defaultForm(): Form {
   return {
     name: "Custom Profile",
+    container: "auto",
     vCodec: "libx264",
+    svtVariant: "standard",
     pixFmt: "yuv420p",
     crf: 23,
     preset: "medium",
@@ -354,13 +366,25 @@ export function defaultForm(): Form {
 
 /** Codec change: reset preset to the codec default, keep compatible pix_fmt/profile. */
 export function applyVideoCodec(f: Form, codec: string) {
+  if (f.svtVariant === "5fish") f.extra = "";
   f.vCodec = codec;
+  f.svtVariant = "standard";
   f.preset = codec === "libsvtav1" ? "6" : hasPreset(codec) ? "medium" : "";
   const pix = PIXEL_FORMAT_OPTIONS[codec] || [];
   if (pix.length) f.pixFmt = pix.some((o) => o.value === f.pixFmt) ? f.pixFmt : pix[0].value;
   else f.pixFmt = "";
   const profiles = VIDEO_PROFILE_OPTIONS[codec] || [];
   f.vProfile = profiles.some((o) => o.value === f.vProfile) ? f.vProfile : "";
+}
+
+export function applySvtVariant(f: Form, variant: string) {
+  const anime = variant === "5fish";
+  f.svtVariant = variant;
+  f.preset = anime ? "2" : "6";
+  f.crf = anime ? 26 : 30;
+  f.fastDecode = !anime;
+  f.extra = "";
+  if (anime) f.pixFmt = "yuv420p10le";
 }
 
 export function profileChoices(codec: string): Option[] {
@@ -420,18 +444,25 @@ export function applyPreset(f: Form, preset: Profile) {
 /** Load a saved or imported profile into the editor. */
 export function formFromProfile(data: Profile): Form {
   const f = defaultForm();
+  f.container = coerce(String(data.container ?? "auto").trim().toLowerCase(), OUTPUT_CONTAINERS);
+  if (!f.container) throw new Error("Choose Auto, MKV, MP4, MOV, or WebM as the output container.");
   f.name = data.name || "Custom Profile";
   f.rename = data.rename || "";
   f.cover = data.cover_image || "";
-  const vCodec = coerce(data.video_codec || "libx264", VIDEO_CODECS);
+  const vCodec = coerce(String(data.video_codec || "libx264").trim().toLowerCase(), VIDEO_CODECS);
+  if (data.svtav1_variant != null && (data.svtav1_variant !== "5fish" || vCodec !== "libsvtav1")) {
+    throw new Error("The SVT-AV1 variant must be 5fish and requires the SVT-AV1 video codec.");
+  }
   f.aCodec = coerce(data.audio_codec || "aac", AUDIO_CODECS);
   f.sMode = coerce(data.subtitle_mode || "copy", SUBTITLE_MODES);
   const vp = data.video_params || {};
   const isAv1 = vCodec === "libsvtav1";
+  const isAnime = isAv1 && data.svtav1_variant === "5fish";
   const isHevc = vCodec === "libx265";
   applyVideoCodec(f, vCodec);
-  f.crf = Number(vp.crf ?? (isAv1 ? 30 : isHevc ? 24 : 23));
-  f.preset = coerce(vp.preset ?? (isAv1 ? 6 : "medium"), presetOptions(vCodec));
+  if (isAnime) applySvtVariant(f, "5fish");
+  f.crf = Number(vp.crf ?? (isAnime ? 26 : isAv1 ? 30 : isHevc ? 24 : 23));
+  f.preset = coerce(vp.preset ?? (isAv1 ? f.preset : "medium"), presetOptions(vCodec));
   f.pixFmt = coerce(vp.pix_fmt || (isAv1 || isHevc ? "yuv420p10le" : "yuv420p"), PIXEL_FORMAT_OPTIONS[vCodec] || []);
   f.vProfile = coerce(vp.profile ?? "", profileChoices(vCodec));
   f.level = coerce(vp.level || "", LEVELS);
@@ -445,7 +476,16 @@ export function formFromProfile(data: Profile): Form {
   const legacyTuneZero = String(vp.extra_params || "")
     .split(":")
     .some((part) => part.trim() === "tune=0");
-  f.fastDecode = vp.fast_decode !== undefined ? Boolean(vp.fast_decode) : !legacyTuneZero;
+  const fastDecode = vp.fast_decode;
+  if (typeof fastDecode === "string") {
+    const value = fastDecode.trim().toLowerCase();
+    f.fastDecode = ["1", "true", "yes", "on"].includes(value)
+      || (!isAnime && !["0", "false", "no", "off"].includes(value));
+  } else if (typeof fastDecode === "boolean" || typeof fastDecode === "number") {
+    f.fastDecode = Boolean(fastDecode);
+  } else {
+    f.fastDecode = !isAnime && !legacyTuneZero;
+  }
   const ap = data.audio_params || {};
   const isOpus = f.aCodec === "libopus";
   f.aBitrate = coerce(ap.bitrate || (isOpus ? "128k" : "192k"), AUDIO_BITRATES);
@@ -467,6 +507,7 @@ export function formFromProfile(data: Profile): Form {
 export function getProfileJSON(f: Form): Profile {
   const vCodec = f.vCodec;
   const aCodec = f.aCodec;
+  const isAnime = vCodec === "libsvtav1" && f.svtVariant === "5fish";
 
   const metadata: Record<string, string> = {};
   if (f.title) metadata.title = f.title;
@@ -497,12 +538,14 @@ export function getProfileJSON(f: Form): Profile {
     rename: f.rename || "",
     cover_image: f.cover || "",
     video_codec: vCodec || "libx264",
+    ...(f.container !== "auto" ? { container: f.container } : {}),
+    ...(isAnime ? { svtav1_variant: "5fish" } : {}),
     audio_codec: aCodec || "aac",
     subtitle_mode: f.sMode || "copy",
     metadata,
     video_params: {
       crf: parseInt(String(f.crf ?? "23")),
-      preset: vCodec === "libsvtav1" ? parseInt(f.preset || "6") : f.preset || "medium",
+      preset: vCodec === "libsvtav1" ? parseInt(f.preset || (isAnime ? "2" : "6")) : f.preset || "medium",
       pix_fmt: f.pixFmt || "yuv420p",
       profile: f.vProfile || "",
       level: f.level || "",
@@ -538,21 +581,56 @@ export function exportJSON(profile: Profile, indent = 2): string {
   return JSON.stringify(exportData, null, indent);
 }
 
+export function containerError(profile: Profile): string {
+  const { container, video_codec, audio_codec, subtitle_mode } = profile;
+  if (container === "mov") {
+    if (!["libx264", "libx265", "mpeg4", "copy"].includes(video_codec)) {
+      return "MOV requires H.264, H.265, MPEG-4, or compatible copied video.";
+    }
+    if (!["aac", "ac3", "libmp3lame", "copy"].includes(audio_codec)) {
+      return "MOV requires AAC, AC-3, MP3, or compatible copied audio.";
+    }
+  }
+  if (container === "webm") {
+    if (!["libsvtav1", "libvpx-vp9", "copy"].includes(video_codec) ||
+        (video_codec === "copy" && subtitle_mode === "burn")) {
+      return "WebM requires AV1, VP9, or compatible copied video without subtitle burn-in.";
+    }
+    if (!["libopus", "copy"].includes(audio_codec)) {
+      return "WebM requires Opus or compatible copied audio.";
+    }
+  }
+  return "";
+}
+
 // ── FFmpeg command preview ──────────────────────────────────────────
 export function getFFmpegCmd(profile: Profile): string {
-  const useAutomaticTimestamps = profile.audio_codec === 'copy';
-  let cmd = `ffmpeg -y -nostdin${useAutomaticTimestamps ? '' : ' -fflags +genpts'} -i input.mkv \\\n`;
+  const container = coerce(profile.container, OUTPUT_CONTAINERS);
+  const extension = !container || container === "auto" ? "mkv" : container;
+  const isMkv = extension === "mkv";
+  const isMp4OrMov = extension === "mp4" || extension === "mov";
+  const useAutomaticTimestamps = isMkv && profile.audio_codec === 'copy';
+  if (profile.video_codec === "copy" && profile.subtitle_mode === "burn") {
+    profile = { ...profile, video_codec: "libx264" };
+  }
+  const isAnime = profile.video_codec === "libsvtav1" && profile.svtav1_variant === "5fish";
+  const binary = isAnime ? "/opt/amaterasu-5fish/bin/ffmpeg" : "ffmpeg";
+  const useLegacySvtParams = useAutomaticTimestamps && !isAnime;
+  let cmd = `${binary} -y -nostdin${useAutomaticTimestamps ? '' : ' -fflags +genpts'} -i input.mkv \\\n`;
 
   // Track mapping
-  if (profile.metadata?.v_track) {
-    cmd += `  -map 0:v:${profile.metadata.v_track === '?' ? '' : profile.metadata.v_track} \\\n`;
+  const tracks = [
+    ["v", profile.metadata?.v_track ?? "0"],
+    ["a", profile.metadata?.a_track ?? "?"],
+    ["s", profile.subtitle_mode === "copy" ? profile.metadata?.s_track ?? "?" : ""],
+  ];
+  for (const [type, selection] of tracks) {
+    for (const track of String(selection).split(",").map((value) => value.trim()).filter(Boolean)) {
+      const stream = ["?", "*", "all"].includes(track) ? type : `${type}:${track.replace(/\?$/, "")}`;
+      cmd += `  -map '0:${stream.replaceAll("'", "'\"'\"'")}?' \\\n`;
+    }
   }
-  if (profile.metadata?.a_track) {
-    cmd += `  -map 0:a:${profile.metadata.a_track === '?' ? '' : profile.metadata.a_track} \\\n`;
-  }
-  if (profile.metadata?.s_track && profile.subtitle_mode !== 'none') {
-    cmd += `  -map 0:s:${profile.metadata.s_track === '?' ? '' : profile.metadata.s_track} \\\n`;
-  }
+  if (isMkv) cmd += `  -map '0:t?' -c:t copy \\\n`;
 
   // Video
   cmd += `  -c:v ${profile.video_codec}`;
@@ -560,36 +638,54 @@ export function getFFmpegCmd(profile: Profile): string {
     if (profile.video_params?.pix_fmt) cmd += ` -pix_fmt ${profile.video_params.pix_fmt}`;
     if (profile.video_codec === 'libsvtav1') {
       const svtParts: string[] = [];
-      if (useAutomaticTimestamps) {
+      if (useLegacySvtParams) {
         if (profile.video_params?.preset !== undefined) svtParts.push(`preset=${profile.video_params.preset}`);
         if (profile.video_params?.crf !== undefined) svtParts.push(`crf=${profile.video_params.crf}`);
       } else {
         if (profile.video_params?.preset !== undefined) cmd += ` -preset ${profile.video_params.preset}`;
         if (profile.video_params?.crf !== undefined) cmd += ` -crf ${profile.video_params.crf}`;
       }
-      let extraParams = String(profile.video_params?.extra_params || '').trim();
+      const svtParams = new Map<string, string>();
+      for (const part of String(profile.video_params?.extra_params || '').split(':')) {
+        const separator = part.indexOf("=");
+        if (separator < 0) continue;
+        const key = part.slice(0, separator).trim();
+        const value = part.slice(separator + 1).trim();
+        if (/^[A-Za-z0-9_-]+$/.test(key) && value) svtParams.set(key, value);
+      }
+      for (const key of ['preset', 'crf', 'profile', 'level']) svtParams.delete(key);
       const seekSeconds = Number(profile.video_params?.keyint_seconds);
+      const alignAnimeKeyint = (frames: number) => Math.max(1, Math.floor((frames + 15) / 32)) * 32 + 1;
       if (Number.isFinite(seekSeconds)) {
-        extraParams = extraParams.split(':').filter(part => !part.startsWith('keyint=')).join(':');
+        svtParams.set('keyint', String(Math.max(24, Math.min(1800, Math.round(seekSeconds * 24)))));
       }
-      if (useAutomaticTimestamps && profile.video_params?.fast_decode === false) {
-        extraParams = extraParams.split(':').filter(part => !part.startsWith('fast-decode=')).join(':');
+      if (isAnime) {
+        cmd += ' -err_detect:v +explode';
+        for (const key of ['lineart-psy-bias', 'texture-psy-bias']) {
+          if (!svtParams.has(key)) svtParams.set(key, '3');
+        }
+        const keyint = alignAnimeKeyint(Math.min(1800, Number(svtParams.get('keyint')) || 240));
+        svtParams.set('keyint', String(keyint));
+        const minimum = svtParams.get('min-keyint') ?? '-1';
+        if (minimum === '-1' && keyint < 129) {
+          svtParams.set('min-keyint', '33');
+        } else if (/^\+?\d+$/.test(minimum)) {
+          const frames = Math.min(keyint, Number(minimum));
+          svtParams.set('min-keyint', String(frames > 1 ? alignAnimeKeyint(frames) : frames));
+        }
       }
-      if (extraParams) svtParts.push(extraParams);
-      if (Number.isFinite(seekSeconds)) {
-        svtParts.push(`keyint=${Math.max(24, Math.min(1800, Math.round(seekSeconds * 24)))}`);
-      }
-      if (profile.video_params?.fast_decode === true && !/(^|:)fast-decode=/.test(extraParams)) {
-        svtParts.push(`fast-decode=${profile.video_params.fast_decode ? 1 : 0}`);
-      } else if (!useAutomaticTimestamps && profile.video_params?.fast_decode === false && !/(^|:)fast-decode=/.test(extraParams)) {
-        svtParts.push('fast-decode=0');
+      const fastDecode = profile.video_params?.fast_decode;
+      if (typeof fastDecode === 'boolean') {
+        if (useLegacySvtParams && !fastDecode) svtParams.delete('fast-decode');
+        else svtParams.set('fast-decode', fastDecode ? '1' : '0');
       }
       if (profile.video_params?.profile !== undefined && profile.video_params.profile !== '') {
-        svtParts.push(`profile=${profile.video_params.profile}`);
+        svtParams.set('profile', String(profile.video_params.profile));
       }
       if (profile.video_params?.level) {
-        svtParts.push(`level=${String(profile.video_params.level).replace('.', '')}`);
+        svtParams.set('level', String(profile.video_params.level).replace('.', ''));
       }
+      for (const [key, value] of svtParams) svtParts.push(`${key}=${value}`);
       if (svtParts.length) cmd += ` -svtav1-params "${svtParts.join(':')}"`;
     } else {
       if (profile.video_params?.crf !== undefined) cmd += ` -crf ${profile.video_params.crf}`;
@@ -635,7 +731,9 @@ export function getFFmpegCmd(profile: Profile): string {
   if (profile.subtitle_mode === 'none') {
     cmd += `  -sn \\\n`;
   } else if (profile.subtitle_mode === 'burn') {
-    cmd += `  -vf subtitles=input.mkv \\\n`;
+    const track = String(profile.metadata?.s_track ?? "").split(",")
+      .map((value) => value.trim().replace(/\?$/, "")).find((value) => /^[0-9]+$/.test(value)) ?? "0";
+    cmd += `  -vf subtitles=input.mkv:si=${track} \\\n`;
   } else {
     cmd += `  -c:s copy \\\n`;
   }
@@ -667,9 +765,13 @@ export function getFFmpegCmd(profile: Profile): string {
 
   cmd += `  -max_muxing_queue_size 4096`;
   if (!useAutomaticTimestamps) cmd += ` -avoid_negative_ts make_zero`;
+  if (isMkv && !useAutomaticTimestamps) cmd += ` -cluster_time_limit 5000`;
+  if (isMp4OrMov) {
+    cmd += ` -movflags +faststart`;
+    if (profile.video_codec === "libx265") cmd += ` -tag:v:0 hvc1`;
+  }
   cmd += ` \\\n`;
-  if (!useAutomaticTimestamps) cmd += `  -cluster_time_limit 5000 `;
-  cmd += `output.mkv`;
+  cmd += `  output.${extension}`;
   return cmd;
 }
 

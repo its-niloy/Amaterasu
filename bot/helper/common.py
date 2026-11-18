@@ -65,6 +65,7 @@ from .ext_utils.media_utils import (
     create_thumb,
     download_image_thumb,
     get_document_type,
+    normalize_encode_profile,
     take_ss,
 )
 from .ext_utils.merge_media import associate_sidecars
@@ -1869,6 +1870,19 @@ class TaskConfig:
         return dl_path
 
     async def proceed_encode(self, dl_path, gid):
+        if self.encode_profile.get("svtav1_variant") is not None or self.encode_profile.get("container") is not None:
+            problem = ""
+            try:
+                normalized, _ = normalize_encode_profile(self.encode_profile)
+            except ValueError as error:
+                problem = str(error)
+            else:
+                if normalized.get("svtav1_variant") == "5fish" and not BinConfig.FFMPEG_5FISH_NAME:
+                    problem = "SVT-AV1 (5fish · Anime) requires an updated Amaterasu base image."
+            if problem:
+                self.is_cancelled = True
+                await self.on_download_error(problem, preserve_download=True)
+                return False
         self.files_to_proceed = {}
         if self.is_file and (await get_document_type(dl_path))[0]:
             self.files_to_proceed[dl_path] = ospath.basename(dl_path)
@@ -1916,7 +1930,8 @@ class TaskConfig:
                         await self.on_download_error(
                             "Encoding failed or the encoded output did not pass "
                             f"playback validation: {file_}. The original file was "
-                            "not uploaded as an encoded result."
+                            "not uploaded as an encoded result.",
+                            preserve_download=True,
                         )
                         return False
         return dl_path
