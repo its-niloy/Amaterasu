@@ -403,7 +403,14 @@ async def test_real_zip_routes_head_ranges_restart_expiry_and_access(tmp_path, m
         )
         assert response.status_code == 200, response.text
         direct = response.json()
-        assert direct == {"download_url": f"/playlist/{token}/zip/stream"}
+        assert direct == {
+            "status_url": f"/playlist/{token}/zip/stream/status",
+            "download_url": f"/playlist/{token}/zip/stream",
+            "stream": True,
+        }
+        # Older playlist bundles always poll status_url, even for a direct ZIP.
+        status = await client.get(direct["status_url"])
+        assert status.status_code == 200 and status.json()["state"] == "ready"
         completed = tracker.values["zip_downloads"]
         response = await client.get(direct["download_url"], headers={"Range": "bytes=0-1"})
         assert response.status_code == 200
@@ -417,6 +424,7 @@ async def test_real_zip_routes_head_ranges_restart_expiry_and_access(tmp_path, m
         assert tracker.values["zip_downloads"] == completed + 1
         assert list(uncached.iterdir()) == []
         server._web_secret = lambda: "rotated-secret"
+        assert (await client.get(direct["status_url"])).status_code == 403
         assert (await client.get(direct["download_url"])).status_code == 403
     await cache.close()
 

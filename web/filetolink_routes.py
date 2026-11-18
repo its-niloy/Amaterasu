@@ -188,8 +188,11 @@ async def prepare_playlist_zip(token: str, request: Request):
             files = await _archive_files(playlist, server)
             key = await server.playlist_archives.start(token, files, _archive_source)
     except ArchiveCapacityError:
+        download_url = f"/playlist/{token}/zip/stream"
         return server._no_store(
-            server.JSONResponse(dict(download_url=f"/playlist/{token}/zip/stream"))
+            server.JSONResponse(dict(
+                status_url=f"{download_url}/status", download_url=download_url, stream=True,
+            ))
         )
     except TimeoutError as exc:
         raise HTTPException(503, "Checking the ZIP timed out. Try again shortly.") from exc
@@ -210,6 +213,8 @@ async def playlist_zip_status(token: str, key: str):
     from web import wserver as server
 
     await _playlist(token)
+    if key == "stream":
+        return server._no_store(server.JSONResponse(dict(state="ready")))
     try:
         state = server.playlist_archives.status(key)
     except ValueError as exc:

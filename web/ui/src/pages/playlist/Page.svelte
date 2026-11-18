@@ -75,7 +75,7 @@
         method: "POST",
         headers: { "X-Amaterasu-Action": "archive" },
       });
-      if (!ticket.status_url) {
+      if (ticket.stream || !ticket.status_url) {
         zipHref = ticket.download_url;
         zipState = "ready";
         zipMessage = "The ZIP downloads directly as it is built. Interrupted downloads restart from the beginning.";
