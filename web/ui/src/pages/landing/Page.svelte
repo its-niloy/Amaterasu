@@ -14,17 +14,25 @@
   import Shell, { type NavGroup } from "../../ui/Shell.svelte";
   import Icon from "../../ui/Icon.svelte";
   import Feedback from "../../ui/Feedback.svelte";
-  import Stack from "./Stack.svelte";
+  import Flame from "./Flame.svelte";
 
   // Public overview of this instance: what Amaterasu is, its live status
-  // (polled from /api/status every 3s, the same feed the old page used),
-  // its components and its architecture.
+  // (polled from /api/status every 3s) and its components. The hero carries
+  // the animated Blackflare flame from the README banner.
   let { data }: { data: { version?: string; bot_name?: string } } = $props();
 
   const version = $derived(data.version ?? "");
-  const SOURCE = "https://github.com/Zan-getsu/Amaterasu";
+  const SOURCE = "https://github.com/its-niloy/Amaterasu";
 
-  type Status = { active_tasks: number; cpu: number; ram: number; uptime: string };
+  // active_tasks/uptime come from the bot process's published snapshot; they
+  // are null (and bot_reporting false) when the bot is not reporting.
+  type Status = {
+    active_tasks: number | null;
+    uptime: string | null;
+    bot_reporting?: boolean;
+    cpu: number;
+    ram: number;
+  };
   let status = $state<Status | null>(null);
   let failed = $state(false);
 
@@ -35,7 +43,6 @@
         { label: "Overview", href: "#overview", icon: "home", current: true },
         { label: "Live status", href: "#status", icon: "pulse" },
         { label: "Components", href: "#components", icon: "layers" },
-        { label: "Architecture", href: "#architecture", icon: "workflow" },
       ],
     },
   ];
@@ -90,6 +97,8 @@
     }
   }
 
+  const botReporting = $derived(status ? status.bot_reporting !== false : false);
+
   const pct = (n: number | undefined) =>
     n == null || !Number.isFinite(Number(n)) ? "—" : `${Math.round(Number(n))}`;
 
@@ -114,7 +123,8 @@
 
 <Shell place="Overview" {nav} note="Self-hosted. Status refreshes every 3 seconds.">
   <div class="page">
-    <section class="hero" aria-labelledby="overview">
+    <!-- Inked in both themes so the white flame always reads (like the banner). -->
+    <section class="hero" aria-labelledby="overview" data-scheme="dark">
       <div class="hero-copy">
         <h1 id="overview" tabindex="-1">Amaterasu</h1>
         <p class="hero-lead">
@@ -124,9 +134,18 @@
           {#if version}
             <span class="pill"><Icon icon={Shield} size={12} /> {version}</span>
           {/if}
-          <span class="pill" data-tone={status ? "success" : failed ? "danger" : undefined}>
+          <span
+            class="pill"
+            data-tone={status ? (botReporting ? "success" : "warning") : failed ? "danger" : undefined}
+          >
             <span class="dot"></span>
-            {status ? "Online" : failed ? "Unreachable" : "Checking…"}
+            {status
+              ? botReporting
+                ? "Online"
+                : "Bot not reporting"
+              : failed
+                ? "Unreachable"
+                : "Checking…"}
           </span>
           {#if data.bot_name}<span class="pill">Node: {data.bot_name}</span>{/if}
         </div>
@@ -142,12 +161,9 @@
         </div>
       </div>
 
-      <figure class="hero-figure" id="architecture">
-        <Stack {version} />
-        <figcaption class="note">
-          How a task moves: Telegram in, through the engines and processing, out to your destinations.
-        </figcaption>
-      </figure>
+      <div class="hero-flame" aria-hidden="true">
+        <Flame />
+      </div>
     </section>
 
     <section id="status" aria-labelledby="status-title" class="section">
@@ -162,6 +178,11 @@
         <Feedback tone="warning" announcement="status">
           Status is not reachable right now. Retrying automatically.
         </Feedback>
+      {:else if status && !botReporting}
+        <Feedback tone="warning" announcement="status">
+          The web server is up, but the bot has not reported its tasks in the last few seconds. It
+          may still be starting. Task count and uptime will appear once it does.
+        </Feedback>
       {/if}
 
       <div class="stats" aria-live="off">
@@ -170,8 +191,12 @@
             <span class="tile"><Icon icon={Activity} size={17} /></span>
             <h3>Active tasks</h3>
           </header>
-          <p class="stat-value">{status ? status.active_tasks : "—"}</p>
-          <p class="stat-note">Downloads, uploads and processing in flight</p>
+          <p class="stat-value">{status?.active_tasks ?? "—"}</p>
+          <p class="stat-note">
+            {status && !botReporting
+              ? "Waiting for the bot to report"
+              : "Downloads, uploads and processing in flight"}
+          </p>
         </article>
         <article class="card stat">
           <header class="stat-head">
@@ -218,7 +243,7 @@
             <span class="tile"><Icon icon={Clock} size={17} /></span>
             <h3>Uptime</h3>
           </header>
-          <p class="stat-value uptime">{status ? status.uptime : "—"}</p>
+          <p class="stat-value uptime">{status?.uptime ?? "—"}</p>
           <p class="stat-note">Since the bot last started</p>
         </article>
       </div>
@@ -268,7 +293,7 @@
   .hero {
     position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
     gap: var(--space-8);
     align-items: center;
     padding: clamp(1.5rem, 1rem + 2.5vw, 3rem);
@@ -281,7 +306,7 @@
           transparent 70%
         )
         padding-box,
-      var(--surface-raised) padding-box,
+      linear-gradient(var(--surface-raised), var(--surface-raised)) padding-box,
       var(--card-edge) border-box;
     box-shadow: var(--shadow-card);
     overflow: hidden;
@@ -334,11 +359,13 @@
     margin-top: var(--space-6);
   }
 
-  .hero-figure {
-    margin: 0;
-    display: grid;
-    gap: var(--space-3);
-    scroll-margin-top: calc(var(--topbar-height) + var(--space-4));
+  /* The flame sits in the right half and its heat lines run off the
+     hero's edges (the hero clips them). */
+  .hero-flame {
+    justify-self: center;
+    width: min(100%, 22rem);
+    margin-block: var(--space-6);
+    pointer-events: none;
   }
 
   /* ── Sections ────────────────────────────────────────────────── */
@@ -415,6 +442,11 @@
   @media (max-width: 64rem) {
     .hero {
       grid-template-columns: minmax(0, 1fr);
+    }
+    .hero-flame {
+      order: -1;
+      width: min(60%, 15rem);
+      margin-block: var(--space-4) var(--space-2);
     }
   }
 

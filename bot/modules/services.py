@@ -69,7 +69,7 @@ async def start(_, message):
     lang = Language()
     buttons = ButtonMaker()
     buttons.url_button(
-        lang.START_BUTTON1, "https://github.com/Zan-getsu/Amaterasu"
+        lang.START_BUTTON1, "https://github.com/its-niloy/Amaterasu"
     )
     buttons.url_button(lang.START_BUTTON2, "https://t.me/itsniloybhowmick")
     reply_markup = buttons.build_menu(2)

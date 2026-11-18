@@ -6,8 +6,8 @@
 
 <p align="center">
   <a href="#"><img src="https://img.shields.io/badge/Version-1.7.0-orange?style=for-the-badge&logo=rocket"></a>
-  <a href="#"><img src="https://img.shields.io/github/repo-size/Zan-getsu/Amaterasu?color=FF4500&label=Size&style=for-the-badge"></a>
-  <a href="#"><img src="https://img.shields.io/github/license/Zan-getsu/Amaterasu?style=for-the-badge&color=FF8C00"></a>
+  <a href="#"><img src="https://img.shields.io/github/repo-size/its-niloy/Amaterasu?color=FF4500&label=Size&style=for-the-badge"></a>
+  <a href="#"><img src="https://img.shields.io/github/license/its-niloy/Amaterasu?style=for-the-badge&color=FF8C00"></a>
   <br>
   <a href="#"><img src="https://img.shields.io/badge/Powered%20By-Python_3.11-blue?style=for-the-badge&logo=python"></a>
   <a href="#"><img src="https://img.shields.io/badge/Deployed_Via-Docker-2496ED?style=for-the-badge&logo=docker"></a>
@@ -271,7 +271,7 @@ Connect to your VPS and install the container runtime of your choice:
 
 ```bash
 # Clone the repository
-git clone https://github.com/Zan-getsu/Amaterasu.git && cd Amaterasu
+git clone https://github.com/its-niloy/Amaterasu.git && cd Amaterasu
 
 
 # Create your config file from the sample
@@ -955,7 +955,7 @@ For an additional layer of protection on the web UI itself (beyond the file-down
 
 | Variable | Type | Default | Description |
 |---|---|---|---|
-| `UPSTREAM_REPO` | `str` | `https://github.com/Zan-getsu/Amaterasu` | Git repo URL for auto-update. Empty disables auto-update |
+| `UPSTREAM_REPO` | `str` | `https://github.com/its-niloy/Amaterasu` | Git repo URL for auto-update. Empty disables auto-update |
 | `UPSTREAM_BRANCH` | `str` | `"main"` | Branch to track |
 | `AUTO_UPDATE` | `bool` | `False` | Opt in to Git updates. A clean matching branch is fast-forwarded; dirty, ahead, detached, or diverged repositories are skipped without changing files |
 | `UPDATE_PKGS` | `bool` | `False` | Run `uv pip install -U -r requirements.txt` on every boot. Off by default to avoid surprises — pin and update explicitly |
@@ -1008,7 +1008,7 @@ Each pattern is a Python regex. Invalid patterns are skipped with a warning. If 
 | `DISABLE_BULK` | `bool` | `False` | Disable bulk download feature |
 | `DISABLE_MULTI` | `bool` | `False` | Disable multi-link feature |
 | `DISABLE_FF_MODE` | `bool` | `False` | Disable FFmpeg processing |
-| `UPSTREAM_REPO` | `str` | `https://github.com/Zan-getsu/Amaterasu` | Repository URL used only when `AUTO_UPDATE=true`. Allowed hosts: `github.com`, `raw.githubusercontent.com`, `git.nbmirror.qzz.io` |
+| `UPSTREAM_REPO` | `str` | `https://github.com/its-niloy/Amaterasu` | Repository URL used only when `AUTO_UPDATE=true`. Allowed hosts: `github.com`, `raw.githubusercontent.com`, `git.nbmirror.qzz.io` |
 | `UPSTREAM_BRANCH` | `str` | `main` | Branch eligible for a safe fast-forward update |
 | `AUTO_UPDATE` | `bool` | `False` | Opt in to safe, clean-tree-only Git updates on boot or bot restart |
 | `UPDATE_PKGS` | `bool` | `False` | Auto-update pip packages on restart |

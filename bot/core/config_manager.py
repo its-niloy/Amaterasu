@@ -198,7 +198,7 @@ class Config:
     UPLOAD_PATHS = {}
     DRIVE_CATEGORY_MODE = False
     DRIVE_CATEGORY_SA = ""
-    UPSTREAM_REPO = "https://github.com/Zan-getsu/Amaterasu"
+    UPSTREAM_REPO = "https://github.com/its-niloy/Amaterasu"
     UPSTREAM_BRANCH = "main"
     AUTO_UPDATE = False  # opt-in; never modify a deployment checkout by default
     UPDATE_PKGS = False  # default off — pin and update explicitly to avoid surprises

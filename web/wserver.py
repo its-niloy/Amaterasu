@@ -629,16 +629,27 @@ def _datetime_is_expired(value) -> bool:
 
 @app.api_route("/api/status", methods=["GET"])
 async def get_bot_status():
-    from bot import task_dict, bot_start_time
+    """Public instance status for the landing page.
+
+    The bot runs in another process, so the task count and uptime come from
+    the snapshot it publishes (bot/helper/ext_utils/runtime_status.py).
+    When that snapshot is missing or stale, ``active_tasks`` and ``uptime``
+    are null and ``bot_reporting`` is false rather than a misleading zero.
+    """
+    from bot.helper.ext_utils.runtime_status import read_bot_status
     from bot.helper.ext_utils.status_utils import get_readable_time
     from psutil import cpu_percent, virtual_memory
     from time import time
 
+    snapshot = read_bot_status()
     return JSONResponse({
-        "active_tasks": len(task_dict),
-        "uptime": get_readable_time(time() - bot_start_time),
+        "active_tasks": snapshot["active_tasks"] if snapshot else None,
+        "uptime": (
+            get_readable_time(time() - snapshot["started_at"]) if snapshot else None
+        ),
+        "bot_reporting": snapshot is not None,
         "cpu": cpu_percent(),
-        "ram": virtual_memory().percent
+        "ram": virtual_memory().percent,
     })
 
 
@@ -704,13 +715,16 @@ async def metrics():
     """
     from time import time as _time
     from psutil import cpu_percent, virtual_memory
+    # The bot publishes its task count from its own process (runtime_status);
+    # this web process's task_dict is always empty.
     try:
-        from bot import task_dict, bot_start_time
-        active_tasks = len(task_dict)
-        uptime_seconds = _time() - bot_start_time
+        from bot.helper.ext_utils.runtime_status import read_bot_status
+        snapshot = read_bot_status()
     except Exception:
-        active_tasks = 0
-        uptime_seconds = 0
+        snapshot = None
+    active_tasks = snapshot["active_tasks"] if snapshot else 0
+    uptime_seconds = _time() - snapshot["started_at"] if snapshot else 0
+    bot_reporting = 1 if snapshot else 0
     try:
         from bot.helper.ext_utils.db_handler import database
         db_connected = 1 if getattr(database, "db", None) is not None else 0
@@ -719,6 +733,9 @@ async def metrics():
     cpu = cpu_percent()
     ram = virtual_memory().percent
     lines = [
+        "# HELP amaterasu_bot_reporting 1 when the bot's live status snapshot is fresh.",
+        "# TYPE amaterasu_bot_reporting gauge",
+        f"amaterasu_bot_reporting {bot_reporting}",
         "# HELP amaterasu_active_tasks Number of tasks currently in task_dict.",
         "# TYPE amaterasu_active_tasks gauge",
         f"amaterasu_active_tasks {active_tasks}",
