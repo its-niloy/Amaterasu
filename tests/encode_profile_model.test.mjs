@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 globalThis.location = { search: "" };
-const { applyPreset, containerError, formFromProfile, getFFmpegCmd, getProfileJSON, QUICK_PRESETS } = await import(
+const { applyPreset, applySvtVariant, containerError, formFromProfile, getFFmpegCmd, getProfileJSON, QUICK_PRESETS } = await import(
   "../web/ui/src/pages/encode-profiles/profile.ts"
 );
 
@@ -68,4 +68,23 @@ test("the selected output container survives a preset and controls the preview",
   assert.equal(containerError({ ...profile, container: "webm" }), "");
   assert.match(containerError({ ...profile, container: "mov" }), /MOV requires/);
   assert.throws(() => formFromProfile({ ...profile, container: "unknown" }), /output container/);
+});
+
+test("changing SVT variants preserves quality and speed controls", () => {
+  const form = formFromProfile({
+    ...profile, svtav1_variant: undefined,
+    video_params: { crf: 33, preset: 5, fast_decode: true, extra_params: "scm=2:enable-overlays=1" },
+  });
+  applySvtVariant(form, "5fish");
+  const saved = getProfileJSON(form);
+  assert.equal(saved.video_params.crf, 33);
+  assert.equal(saved.video_params.preset, 5);
+  assert.equal(saved.video_params.fast_decode, true);
+  assert.equal(saved.video_params.extra_params, undefined);
+  assert.match(getFFmpegCmd(saved), /lp=0/);
+
+  applyPreset(form, QUICK_PRESETS.find(preset => preset.name === "AV1 Anime Compact"));
+  assert.equal(form.svtVariant, "5fish");
+  assert.equal(form.crf, 33);
+  assert.equal(form.preset, "6");
 });

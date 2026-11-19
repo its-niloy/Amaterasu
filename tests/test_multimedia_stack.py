@@ -56,6 +56,13 @@ def test_ffmpeg_build_omits_non_runtime_static_libraries_and_docs():
     assert "--disable-doc" in ffmpeg_build
 
 
+def test_svt_libraries_use_portable_clang_lto_builds():
+    dockerfile = (ROOT / "Dockerfile.base").read_text(encoding="utf-8")
+    assert dockerfile.count("-DCMAKE_C_COMPILER=clang") == 2
+    assert dockerfile.count("-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON") == 2
+    assert "-march=native" not in dockerfile
+
+
 def test_manual_image_verifier_checks_exact_stack_and_codec_availability():
     verifier = (ROOT / "build.sh").read_text(encoding="utf-8")
 

@@ -1,6 +1,7 @@
 import ast
 import os.path as ospath
 import re
+import sys
 from asyncio import Lock, gather
 from contextlib import suppress
 from fractions import Fraction
@@ -9,7 +10,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
-from pytest import raises
+from pytest import mark, raises
 
 ROOT = Path(__file__).resolve().parents[1]
 MEDIA_UTILS_PATH = ROOT / "bot" / "helper" / "ext_utils" / "media_utils.py"
@@ -462,7 +463,7 @@ def test_existing_av1_profile_is_preserved_and_compiled_efficiently():
     assert profile["audio_params"]["vbr"] is True
     assert "film-grain=4" in params
     assert "keyint=240" in params
-    assert "lp=4" in params
+    assert "lp=0" in params
     assert "fast-decode=0" in params
     assert "preset=" not in params
     assert "crf=" not in params
@@ -485,7 +486,7 @@ def test_anime_av1_profile_round_trips_with_fork_specific_defaults():
     assert normalize(anime) == (anime, [])
     assert anime["svtav1_variant"] == "5fish"
     video = anime["video_params"]
-    assert (video["preset"], video["crf"], video["pix_fmt"]) == (2, 26, "yuv420p10le")
+    assert (video["preset"], video["crf"], video["pix_fmt"]) == (6, 33, "yuv420p10le")
     params = parse_params(build_svt(video, 2, anime=True))
     assert params["lineart-psy-bias"] == "5"
     assert params["texture-psy-bias"] == "3"
@@ -512,7 +513,7 @@ def test_anime_av1_profile_round_trips_with_fork_specific_defaults():
     with raises(ValueError, match="variant must be 5fish"):
         normalize({**anime, "svtav1_variant": "5Fish"})
     oversized, _ = normalize({**anime, "video_params": {"crf": float("inf")}})
-    assert oversized["video_params"]["crf"] == 26
+    assert oversized["video_params"]["crf"] == 33
 
 
 def test_copied_audio_av1_uses_pre_upgrade_svt_parameter_semantics():
@@ -603,7 +604,7 @@ def test_minimal_av1_profile_gets_balanced_defaults_without_overriding_legacy_pa
     assert profile["video_params"]["preset"] == 6
     assert profile["video_params"]["crf"] == 30
     assert profile["video_params"]["pix_fmt"] == "yuv420p10le"
-    assert "lp=4" in params
+    assert "lp=6" in params
     assert "keyint=120" in params
     assert "fast-decode=0" in params
 
@@ -660,7 +661,7 @@ def test_invalid_legacy_av1_controls_and_audio_bitrate_fall_back_safely():
 
     assert profile["audio_params"]["bitrate"] == "128k"
     assert any("invalid audio bitrate" in item for item in warnings)
-    assert "lp=1" in params
+    assert "lp=0" in params
     assert "keyint=300" in params
     assert "fast-decode=1" in params
 
@@ -805,10 +806,128 @@ async def test_validation_rejects_missing_audio_and_checks_seek_points():
     assert [sample[2] for sample in validator.samples].count("video") == 3
     assert [sample[2] for sample in validator.samples].count("audio") == 1
 
+    valid, reason = await validate(validator, "source", "output", True, expect_cover=True)
+    assert not valid and "poster is missing" in reason
+    probes["output"]["streams"].append({
+        "codec_type": "video", "codec_name": "mjpeg", "disposition": {"attached_pic": 1},
+        "tags": {"filename": "cover.jpg", "mimetype": "image/jpeg"},
+    })
+    valid, reason = await validate(validator, "source", "output", True, expect_cover=True)
+    assert valid, reason
+
     probes["output"]["streams"] = [{"codec_type": "video"}]
     valid, reason = await validate(validator, "source", "output", True)
     assert valid is False
     assert "no audio stream" in reason
+
+
+@mark.parametrize("variant", [None, "5fish"])
+@mark.parametrize("poster_source", ["saved", "profile", "unavailable"])
+async def test_svt_uses_full_cpu_set_and_requires_the_profile_poster(
+    tmp_path, monkeypatch, variant, poster_source,
+):
+    monkeypatch.chdir(tmp_path)
+    poster = tmp_path / "thumbnails" / "42.jpg"
+    poster.parent.mkdir()
+    poster.write_bytes(b"image fixture")
+    source_probe = {
+        "format": {"duration": "3"},
+        "streams": [
+            {"codec_type": "video", "avg_frame_rate": "24"},
+            {"codec_type": "audio"},
+            {"codec_type": "attachment", "tags": {"filename": "font.ttf"}},
+            {
+                "index": 3, "codec_type": "video", "codec_name": "mjpeg",
+                "disposition": {"attached_pic": 1},
+                "tags": {"filename": "cover.jpg", "mimetype": "image/jpeg"},
+            },
+        ],
+    }
+    helpers = _load_media_helpers(
+        "_bounded_int", "_as_bool", "_parse_codec_params", "normalize_encode_profile",
+        "_probe_duration", "_probe_video_frame_count", "get_encode_output_path",
+        "_encode_timestamp_policy", "_build_svtav1_params",
+    )
+    namespace = helpers[-1].__globals__
+    process = SimpleNamespace(
+        returncode=0, communicate=AsyncMock(return_value=(b"", b"")),
+    )
+    launch = AsyncMock(return_value=process)
+
+    async def isfile(path):
+        return Path(path).is_file()
+
+    remove_file = AsyncMock()
+    namespace.update(
+        LOGGER=Mock(), cpu_ids=[1, 3, 5, 7], cores="1,3", threads=2, PIPE=-1,
+        BinConfig=SimpleNamespace(FFMPEG_NAME="standard-ffmpeg", FFMPEG_5FISH_NAME="5fish-ffmpeg"),
+        DOWNLOAD_DIR=str(tmp_path) + "/", makedirs=AsyncMock(), remove=remove_file,
+        _probe_media_file=AsyncMock(return_value=(source_probe, "")),
+        aiopath=SimpleNamespace(isfile=isfile),
+        create_subprocess_exec=launch,
+        download_custom_thumb=AsyncMock(return_value="" if poster_source == "unavailable" else str(poster)),
+    )
+    monkeypatch.setitem(sys.modules, "aioshutil", SimpleNamespace(copy=AsyncMock(), rmtree=AsyncMock()))
+    listener = SimpleNamespace(thumb=None, user_id=42, is_cancelled=False)
+    encoder = SimpleNamespace(
+        _listener=listener, clear=Mock(), _ffmpeg_progress=AsyncMock(),
+        _validate_encoded_media=AsyncMock(return_value=(True, "")),
+    )
+    encode = _load_ffmpeg_method("encode_video", namespace)
+    profile = {
+        "video_codec": "libsvtav1", "audio_codec": "copy", "container": "mkv",
+        "video_params": {"crf": 33, "preset": 5},
+    }
+    if variant:
+        profile["svtav1_variant"] = variant
+    if poster_source != "saved":
+        profile["cover_image"] = "https://t.me/poster_fixture/1"
+
+    result = await encode(encoder, str(tmp_path / "source.mkv"), profile)
+    if poster_source == "unavailable":
+        assert result is False
+        launch.assert_not_awaited()
+        return
+    assert result
+    command = launch.await_args.args
+    assert command[:3] == ("taskset", "-c", "1,3,5,7")
+    assert command[command.index("-threads") + 1] == "4"
+    assert "-attach" in command
+    assert "-0:3" in command
+    assert "-metadata:s:t:1" in command
+    assert "filename=cover.jpg" in command and "mimetype=image/jpeg" in command
+    assert encoder._validate_encoded_media.await_args.kwargs == {"expect_cover": True}
+    if poster_source == "saved":
+        remove_file.assert_not_awaited()
+
+
+async def test_public_telegram_poster_falls_back_when_the_bot_cannot_read_the_channel(monkeypatch):
+    (download,) = _load_media_helpers("download_custom_thumb")
+    namespace = download.__globals__
+    api = SimpleNamespace(get_tg_link_message=AsyncMock(side_effect=ValueError("chat unavailable")))
+    monkeypatch.setitem(sys.modules, "bot.helper.telegram_helper.message_utils", api)
+    image_download = AsyncMock(return_value="downloaded-poster.jpg")
+    response = SimpleNamespace(
+        status_code=200,
+        text='<a class="tgme_widget_message_photo_wrap other" '
+             'style="background-image:url(\'https://cdn.example/poster.jpg\')"></a>',
+    )
+    client = SimpleNamespace(get=AsyncMock(return_value=response))
+    session = AsyncMock()
+    session.__aenter__.return_value = client
+    namespace.update(
+        __package__="bot.helper.ext_utils", LOGGER=Mock(), re_search=re.search,
+        AsyncSession=Mock(return_value=session), download_image_thumb=image_download,
+    )
+    assert await download("https://t.me/poster_fixture/39") == "downloaded-poster.jpg"
+    image_download.assert_awaited_once_with("https://cdn.example/poster.jpg")
+    client.get.assert_awaited_once_with("https://t.me/poster_fixture/39?embed=1&mode=tme")
+
+    image_download.reset_mock()
+    client.get.reset_mock()
+    assert await download("https://t.me/c/123/39") == ""
+    client.get.assert_not_awaited()
+    image_download.assert_not_awaited()
 
 
 async def test_audio_decode_check_requires_a_real_decoded_frame():

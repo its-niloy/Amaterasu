@@ -530,6 +530,7 @@
                   <button
                     type="button"
                     class="preset"
+                    disabled={preset.svtav1_variant === "5fish" && !data.has_5fish}
                     onclick={() => {
                       applyPreset(form, preset);
                       toast.show(`Applied preset: ${preset.name}`);
@@ -603,6 +604,8 @@
                   />
                   {#if !data.has_5fish}
                     <p class="note" id="v-svt-variant-note">5fish requires an updated Amaterasu base image.</p>
+                  {:else if form.svtVariant === "5fish"}
+                    <p class="note">5fish uses its own CRF scale. Compare a short sample for size. Preset 6 is faster, while 4 and 2 spend more time on compression.</p>
                   {/if}
                 </div>
               {/if}

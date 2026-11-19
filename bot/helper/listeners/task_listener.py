@@ -344,6 +344,13 @@ class TaskListener(TaskConfig):
                 if cover_thumb:
                     self.thumb = cover_thumb
                     self._encode_cover_thumb = cover_thumb
+                else:
+                    self.is_cancelled = True
+                    await self.on_download_error(
+                        "The profile poster could not be downloaded. Check access to the Telegram message or image URL.",
+                        preserve_download=True,
+                    )
+                    return None
 
         return await self.proceed_encode(up_path, gid)
 

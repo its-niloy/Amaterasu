@@ -47,6 +47,13 @@ export const QUICK_PRESETS: Profile[] = [
     audio_params: { bitrate: "128k", vbr: true },
   },
   {
+    name: "AV1 Anime Compact",
+    video_codec: "libsvtav1", svtav1_variant: "5fish", audio_codec: "copy", subtitle_mode: "copy",
+    metadata: {},
+    video_params: { crf: 33, preset: 6, pix_fmt: "yuv420p10le", keyint_seconds: 10, fast_decode: false },
+    audio_params: {},
+  },
+  {
     name: "Anime Encode",
     video_codec: "libx265", audio_codec: "libopus", subtitle_mode: "copy",
     metadata: {},
@@ -380,9 +387,6 @@ export function applyVideoCodec(f: Form, codec: string) {
 export function applySvtVariant(f: Form, variant: string) {
   const anime = variant === "5fish";
   f.svtVariant = variant;
-  f.preset = anime ? "2" : "6";
-  f.crf = anime ? 26 : 30;
-  f.fastDecode = !anime;
   f.extra = "";
   if (anime) f.pixFmt = "yuv420p10le";
 }
@@ -413,6 +417,7 @@ function trackValue(f: Form, stream: "v" | "a" | "s"): string {
 /** Quick preset: every codec-specific field resets so nothing leaks across. */
 export function applyPreset(f: Form, preset: Profile) {
   applyVideoCodec(f, preset.video_codec);
+  if (preset.svtav1_variant === "5fish") applySvtVariant(f, "5fish");
   f.aCodec = preset.audio_codec;
   f.sMode = preset.subtitle_mode;
   const vp = preset.video_params || {};
@@ -461,7 +466,7 @@ export function formFromProfile(data: Profile): Form {
   const isHevc = vCodec === "libx265";
   applyVideoCodec(f, vCodec);
   if (isAnime) applySvtVariant(f, "5fish");
-  f.crf = Number(vp.crf ?? (isAnime ? 26 : isAv1 ? 30 : isHevc ? 24 : 23));
+  f.crf = Number(vp.crf ?? (isAnime ? 33 : isAv1 ? 30 : isHevc ? 24 : 23));
   f.preset = coerce(vp.preset ?? (isAv1 ? f.preset : "medium"), presetOptions(vCodec));
   f.pixFmt = coerce(vp.pix_fmt || (isAv1 || isHevc ? "yuv420p10le" : "yuv420p"), PIXEL_FORMAT_OPTIONS[vCodec] || []);
   f.vProfile = coerce(vp.profile ?? "", profileChoices(vCodec));
@@ -545,7 +550,7 @@ export function getProfileJSON(f: Form): Profile {
     metadata,
     video_params: {
       crf: parseInt(String(f.crf ?? "23")),
-      preset: vCodec === "libsvtav1" ? parseInt(f.preset || (isAnime ? "2" : "6")) : f.preset || "medium",
+      preset: vCodec === "libsvtav1" ? parseInt(f.preset || "6") : f.preset || "medium",
       pix_fmt: f.pixFmt || "yuv420p",
       profile: f.vProfile || "",
       level: f.level || "",
@@ -673,6 +678,10 @@ export function getFFmpegCmd(profile: Profile): string {
           const frames = Math.min(keyint, Number(minimum));
           svtParams.set('min-keyint', String(frames > 1 ? alignAnimeKeyint(frames) : frames));
         }
+      }
+      if (!useLegacySvtParams || svtParams.has("lp")) {
+        const level = Number(svtParams.get("lp") ?? 0);
+        svtParams.set("lp", String(Number.isFinite(level) ? Math.max(0, Math.min(6, Math.trunc(level))) : 0));
       }
       const fastDecode = profile.video_params?.fast_decode;
       if (typeof fastDecode === 'boolean') {

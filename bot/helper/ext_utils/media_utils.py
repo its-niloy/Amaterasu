@@ -24,7 +24,7 @@ from langcodes import Language
 from niquests import AsyncSession
 from PIL import Image
 
-from ... import DOWNLOAD_DIR, LOGGER, cores, threads
+from ... import DOWNLOAD_DIR, LOGGER, cores, cpu_ids, threads
 from ...core.config_manager import BinConfig
 from .bot_utils import cmd_exec, sync_to_async
 from .rust_bridge import probe_document_type
@@ -180,22 +180,46 @@ async def download_custom_thumb(url):
                 path = f"{DOWNLOAD_DIR}thumbnails"
                 await makedirs(path, exist_ok=True)
                 tmp_path = ospath.join(path, f"{time()}_tmp")
-                await msg.download(file_name=tmp_path)
-                
+                downloaded_path = await msg.download(file_name=tmp_path)
+                if not downloaded_path:
+                    raise ValueError("Telegram poster download returned no file.")
+                tmp_path = downloaded_path
+
                 output = ospath.join(path, f"{time()}.jpg")
                 try:
                     await sync_to_async(_prepare_hd_thumbnail, tmp_path, output)
                 except Exception as e:
-                    LOGGER.error(f"Failed to process telegram thumb image: {e}")
                     with suppress(Exception):
                         await remove(tmp_path)
-                    return ""
+                    raise ValueError(f"Failed to process Telegram poster image: {e}") from e
                 with suppress(Exception):
                     await remove(tmp_path)
                 return output
         except Exception as e:
-            LOGGER.error(f"Error downloading telegram thumb from URL: {e}")
-            return ""
+            LOGGER.warning(f"Telegram API poster download failed: {e}")
+        public_message = re.fullmatch(
+            r"https://(?:t\.me|telegram\.me)/([A-Za-z0-9_]+)/(\d+)(?:[?#].*)?", url
+        )
+        if public_message:
+            try:
+                from lxml.html import fromstring
+
+                async with AsyncSession(timeout=30) as client:
+                    response = await client.get(
+                        f"https://t.me/{public_message[1]}/{public_message[2]}?embed=1&mode=tme"
+                    )
+                if response.status_code == 200:
+                    styles = fromstring(response.text).xpath(
+                        '//a[contains(concat(" ", normalize-space(@class), " "), '
+                        '" tgme_widget_message_photo_wrap ")]/@style'
+                    )
+                    if styles:
+                        image_url = re_search(r"url\(['\"]?(https://[^'\" )]+)", styles[0])
+                        if image_url:
+                            return await download_image_thumb(image_url[1])
+            except Exception as error:
+                LOGGER.warning(f"Public Telegram poster download failed: {error}")
+        return ""
     return await download_image_thumb(url)
 
 
@@ -547,7 +571,7 @@ def normalize_encode_profile(profile):
     legacy_codec_params = _parse_codec_params(video_params.get("extra_params"))
     crf_max = 63 if video_codec in {"libsvtav1", "libvpx-vp9"} else 51
     crf_default = {
-        "libsvtav1": 26 if anime_av1 else 30,
+        "libsvtav1": 33 if anime_av1 else 30,
         "libx264": 23,
         "libx265": 24,
         "libvpx-vp9": 30,
@@ -563,7 +587,7 @@ def normalize_encode_profile(profile):
     if video_codec == "libsvtav1":
         video_params["preset"] = _bounded_int(
             video_params.get("preset", legacy_codec_params.get("preset")),
-            2 if anime_av1 else 6, 0, 13,
+            6, 0, 13,
         )
     elif video_codec in {"libx264", "libx265"}:
         preset = str(video_params.get("preset") or "medium").strip().lower()
@@ -731,13 +755,11 @@ def _build_svtav1_params(
         # limits the process to the configured CPU set.
         if "lp" in params:
             params["lp"] = str(
-                _bounded_int(params["lp"], worker_count, 1, worker_count)
+                _bounded_int(params["lp"], 0, 0, 6)
             )
     else:
-        max_parallelism = min(worker_count, 6) if anime else worker_count
-        params["lp"] = str(
-            _bounded_int(params.get("lp"), max_parallelism, 0 if anime else 1, max_parallelism)
-        )
+        # lp is a parallelism level, not a CPU count. Zero lets SVT size its pipeline.
+        params["lp"] = str(_bounded_int(params.get("lp"), 0, 0, 6))
 
     explicit_seek_interval = "keyint_seconds" in video_params
     if explicit_seek_interval:
@@ -1597,7 +1619,7 @@ class FFMpeg:
         return True, ""
 
     async def _validate_encoded_media(
-        self, input_file, output_file, expect_audio, source_probe=None
+        self, input_file, output_file, expect_audio, source_probe=None, *, expect_cover=False
     ):
         if source_probe is None:
             source_probe, source_error = await _probe_media_file(input_file)
@@ -1606,6 +1628,16 @@ class FFMpeg:
         output_probe, output_error = await _probe_media_file(output_file)
         if output_probe is None:
             return False, f"encoded container is unreadable: {output_error}"
+
+        if expect_cover and not any(
+            stream.get("codec_name") in {"mjpeg", "png", "webp"}
+            and (
+                (stream.get("disposition") or {}).get("attached_pic")
+                or (stream.get("tags") or {}).get("filename") == "cover.jpg"
+            )
+            for stream in output_probe.get("streams", [])
+        ):
+            return False, "the requested poster is missing from the encoded file"
 
         if _count_media_streams(output_probe, "video") == 0:
             return False, "encoded file has no playable video stream"
@@ -1872,6 +1904,9 @@ class FFMpeg:
             )
             v_codec = "libx264"
 
+        encode_cores = ",".join(str(cpu) for cpu in cpu_ids) if v_codec == "libsvtav1" else cores
+        encode_threads = max(1, len(cpu_ids)) if v_codec == "libsvtav1" else threads
+
         output_file = get_encode_output_path(
             input_file, v_codec, a_codec, container=profile.get("container")
         )
@@ -1913,17 +1948,31 @@ class FFMpeg:
         # Download and inject custom cover image if present
         custom_thumb_path = None
         original_thumb = getattr(self._listener, "thumb", None)
+        cover_thumb = original_thumb
         cover_url = profile.get("cover_image", "").strip()
         if (
             cover_url
-            and getattr(self._listener, "_encode_cover_thumb", None)
-            == original_thumb
+            and getattr(self._listener, "_encode_cover_thumb", None) == original_thumb
+            and original_thumb
+            and await aiopath.isfile(original_thumb)
         ):
             custom_thumb_path = None
         elif cover_url:
             custom_thumb_path = await download_custom_thumb(cover_url)
-            if custom_thumb_path:
-                self._listener.thumb = custom_thumb_path
+            if not custom_thumb_path or not await aiopath.isfile(custom_thumb_path):
+                LOGGER.error("The profile poster could not be downloaded. Check Telegram message access or the image URL.")
+                return False
+            cover_thumb = custom_thumb_path
+        elif not cover_thumb:
+            user_id = getattr(self._listener, "user_id", None)
+            saved_thumb = f"thumbnails/{user_id}.jpg"
+            if user_id is not None and await aiopath.isfile(saved_thumb):
+                cover_thumb = saved_thumb
+        if cover_thumb == "none":
+            cover_thumb = None
+        elif cover_thumb and not await aiopath.isfile(cover_thumb):
+            LOGGER.error("The requested poster file is missing.")
+            return False
 
         is_mkv = output_file.lower().endswith((".mkv", ".mka"))
         is_mp4 = output_file.lower().endswith((".mp4", ".m4v", ".mov"))
@@ -1932,7 +1981,7 @@ class FFMpeg:
         )
 
         cmd = [
-            "taskset", "-c", f"{cores}",
+            "taskset", "-c", encode_cores,
             ffmpeg_binary,
             "-y", "-nostdin",
             "-hide_banner", "-loglevel", "error", "-progress", "pipe:1",
@@ -1941,8 +1990,8 @@ class FFMpeg:
             cmd.extend(["-fflags", "+genpts"])
         cmd.extend(["-i", input_file])
 
-        if is_mp4 and hasattr(self._listener, "thumb") and self._listener.thumb:
-            cmd.extend(["-i", self._listener.thumb])
+        if is_mp4 and cover_thumb:
+            cmd.extend(["-i", cover_thumb])
 
         def add_map_flags(cmd_list, track_type, track_str):
             for t in str(track_str).split(","):
@@ -1981,8 +2030,16 @@ class FFMpeg:
 
         if is_mkv:
             cmd.extend(["-map", "0:t?", "-c:t", "copy"])
+            replaced_covers = [
+                stream for stream in source_probe.get("streams", [])
+                if cover_thumb and (stream.get("tags") or {}).get("filename", "").lower()
+                in {"cover.jpg", "cover.jpeg", "cover.png", "cover.webp", "small_cover.jpg", "small_cover.png"}
+                and (stream.get("tags") or {}).get("mimetype", "").startswith("image/")
+            ]
+            for stream in replaced_covers:
+                cmd.extend(["-map", f"-0:{stream['index']}"])
 
-        if is_mp4 and hasattr(self._listener, "thumb") and self._listener.thumb:
+        if is_mp4 and cover_thumb:
             cmd.extend(["-map", "1", "-c:v:1", "copy", "-disposition:v:1", "attached_pic"])
 
         crf = v_params.get("crf", 30)
@@ -1999,7 +2056,7 @@ class FFMpeg:
             f"audio={a_codec}, crf={crf}, preset={preset}, "
             f"pix_fmt={pix_fmt}, fps_mode={v_params.get('fps_mode', 'vfr')}, "
             f"timestamp_mode={'automatic' if timestamp_policy['automatic_timestamps'] else 'normalized'}, "
-            f"subtitles={sub_mode}"
+            f"subtitles={sub_mode}, cpu_affinity={encode_cores}, poster={bool(cover_thumb)}"
         )
 
         extra_v_params = str(v_params.get("extra_params") or "").strip()
@@ -2011,7 +2068,7 @@ class FFMpeg:
         if v_codec == "libsvtav1":
             svt_params = _build_svtav1_params(
                 v_params,
-                max(1, threads),
+                encode_threads,
                 frame_rate,
                 compatibility_mode=legacy_av1_copy,
                 anime=anime_av1,
@@ -2120,18 +2177,29 @@ class FFMpeg:
 
         temp_cover_dir = None
         temp_cover_path = None
-        cmd.extend(["-threads", f"{threads}"])
-        if is_mkv and hasattr(self._listener, "thumb") and self._listener.thumb:
+        cmd.extend(["-threads", str(encode_threads)])
+        if is_mkv and cover_thumb:
             from time import time
 
             import aioshutil
             temp_cover_dir = f"{DOWNLOAD_DIR}temp_cover_{time()}"
             await makedirs(temp_cover_dir, exist_ok=True)
             temp_cover_path = ospath.join(temp_cover_dir, "cover.jpg")
-            await aioshutil.copy(self._listener.thumb, temp_cover_path)
+            await aioshutil.copy(cover_thumb, temp_cover_path)
+            attachment_index = sum(
+                stream.get("codec_type") == "attachment"
+                or bool(
+                    (stream.get("disposition") or {}).get("attached_pic")
+                    and (stream.get("tags") or {}).get("filename")
+                )
+                for stream in source_probe.get("streams", [])
+                if stream not in replaced_covers
+            )
             cmd.extend([
                 "-attach", temp_cover_path,
-                "-metadata:s:m:filename:cover.jpg", "mimetype=image/jpeg"
+                f"-metadata:s:t:{attachment_index}", "filename=cover.jpg",
+                f"-metadata:s:t:{attachment_index}", "mimetype=image/jpeg",
+                f"-metadata:s:t:{attachment_index}", "title=Cover",
             ])
         cmd.extend(["-max_muxing_queue_size", "4096"])
         if timestamp_policy["shift_negative_ts"]:
@@ -2172,7 +2240,8 @@ class FFMpeg:
         if code == 0:
             expect_audio = bool(str(a_track).strip())
             valid, reason = await self._validate_encoded_media(
-                input_file, output_file, expect_audio, source_probe
+                input_file, output_file, expect_audio, source_probe,
+                expect_cover=bool(cover_thumb) and (is_mkv or is_mp4),
             )
             if (
                 not valid

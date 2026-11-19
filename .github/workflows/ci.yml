@@ -105,7 +105,7 @@ jobs:
       - name: Install test runner
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest pytest-asyncio
+          python -m pip install pytest pytest-asyncio lxml
 
       - name: Compile Python sources
         run: |
