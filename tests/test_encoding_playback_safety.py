@@ -142,6 +142,27 @@ def test_encode_container_is_selected_for_codec_compatibility(tmp_path):
     assert first.read_bytes() == b"first encode"
 
 
+def test_legacy_all_track_tags_are_normalized_without_changing_track_selection():
+    *_, normalize = _load_media_helpers(
+        "_bounded_int", "_as_bool", "_parse_codec_params", "normalize_encode_profile"
+    )
+    original = {
+        "video_codec": "libsvtav1", "audio_codec": "copy",
+        "metadata": {"s_track": "?", "s:s:?": "language=eng", "s:s:? ": "title=Subs", "s:s:5": "title=Sixth"},
+        "disposition": {"a:0": "default", "a:1": "0", "s:?": "0", "s:0": "default", "s:2": "forced", "s:5": "forced"},
+    }
+    profile, _ = normalize(original)
+    assert list(profile["disposition"].items()) == [
+        ("a:0", "default"), ("a:1", "0"), ("s", "0"),
+        ("s:0", "default"), ("s:2", "forced"), ("s:5", "forced"),
+    ]
+    assert profile["metadata"] == {
+        "s_track": "?", "s:s": "language=eng", "s:s ": "title=Subs", "s:s:5": "title=Sixth",
+    }
+    assert "s:?" in original["disposition"]
+    assert normalize(profile)[0] == profile
+
+
 def test_explicit_output_container_is_normalized_and_checked():
     *_, normalize = _load_media_helpers(
         "_bounded_int", "_as_bool", "_parse_codec_params", "normalize_encode_profile"
@@ -860,6 +881,7 @@ async def test_svt_uses_full_cpu_set_and_requires_the_profile_poster(
     remove_file = AsyncMock()
     namespace.update(
         LOGGER=Mock(), cpu_ids=[1, 3, 5, 7], cores="1,3", threads=2, PIPE=-1,
+        __name__="bot.helper.ext_utils.media_utils", __package__="bot.helper.ext_utils",
         BinConfig=SimpleNamespace(FFMPEG_NAME="standard-ffmpeg", FFMPEG_5FISH_NAME="5fish-ffmpeg"),
         DOWNLOAD_DIR=str(tmp_path) + "/", makedirs=AsyncMock(), remove=remove_file,
         _probe_media_file=AsyncMock(return_value=(source_probe, "")),
@@ -868,6 +890,9 @@ async def test_svt_uses_full_cpu_set_and_requires_the_profile_poster(
         download_custom_thumb=AsyncMock(return_value="" if poster_source == "unavailable" else str(poster)),
     )
     monkeypatch.setitem(sys.modules, "aioshutil", SimpleNamespace(copy=AsyncMock(), rmtree=AsyncMock()))
+    monkeypatch.setitem(sys.modules, "bot.helper.ext_utils.metadata_utils", SimpleNamespace(
+        MetadataProcessor=lambda: SimpleNamespace(process=AsyncMock(side_effect=lambda metadata, path: metadata)),
+    ))
     listener = SimpleNamespace(thumb=None, user_id=42, is_cancelled=False)
     encoder = SimpleNamespace(
         _listener=listener, clear=Mock(), _ffmpeg_progress=AsyncMock(),
@@ -877,6 +902,8 @@ async def test_svt_uses_full_cpu_set_and_requires_the_profile_poster(
     profile = {
         "video_codec": "libsvtav1", "audio_codec": "copy", "container": "mkv",
         "video_params": {"crf": 33, "preset": 5},
+        "disposition": {"s:?": "0", "s:0": "default", "s:2": "forced", "s:5": "forced"},
+        "metadata": {"s:s:?": "language=eng", "s:s:5": "title=Sixth"},
     }
     if variant:
         profile["svtav1_variant"] = variant
@@ -892,6 +919,9 @@ async def test_svt_uses_full_cpu_set_and_requires_the_profile_poster(
     command = launch.await_args.args
     assert command[:3] == ("taskset", "-c", "1,3,5,7")
     assert command[command.index("-threads") + 1] == "4"
+    assert "-disposition:s" in command and "-disposition:s:?" not in command
+    assert "-disposition:s:5" in command
+    assert "-metadata:s:s" in command and "-metadata:s:s:?" not in command
     assert "-attach" in command
     assert "-0:3" in command
     assert "-metadata:s:t:1" in command

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 globalThis.location = { search: "" };
-const { applyPreset, applySvtVariant, containerError, formFromProfile, getFFmpegCmd, getProfileJSON, QUICK_PRESETS } = await import(
+const { applyPreset, applySvtVariant, containerError, formFromProfile, getFFmpegCmd, getProfileJSON, matchesPrefix, normalizeTagKey, QUICK_PRESETS, TAG_TRACKS } = await import(
   "../web/ui/src/pages/encode-profiles/profile.ts"
 );
 
@@ -19,6 +19,33 @@ const profile = {
     extra_params: "preset=6:crf=32: keyint = 240 :min-keyint=129:fast-decode=1",
   },
 };
+
+test("all-track tags use valid selectors and preserve six or more tracks", () => {
+  const source = {
+    ...profile,
+    metadata: { "s:s:?": "language=eng", "s:s:5": "title=Sixth", "s:a:12": "title=Thirteenth" },
+    disposition: { "a:0": "default", "a:1": "0", "s:?": "0", "s:0": "default", "s:2": "forced", "s:5": "forced" },
+  };
+  const saved = getProfileJSON(formFromProfile(source));
+  assert.deepEqual(saved.disposition, { "a:0": "default", "a:1": "0", s: "0", "s:0": "default", "s:2": "forced", "s:5": "forced" });
+  assert.equal(saved.metadata["s:s"], "language=eng");
+  assert.equal(saved.metadata["s:s:5"], "title=Sixth");
+  assert.equal(saved.metadata["s:a:12"], "title=Thirteenth");
+  for (const key of ["s", "s:?", "s:5", "s:12"]) assert.ok(matchesPrefix(key, "s:"), key);
+  for (const key of ["s:s", "s:s:?", "s:s:5"]) assert.ok(matchesPrefix(key, "s:s:"), key);
+  for (const key of ["s:2?", "s:??", "a:5", "subtitle"]) assert.ok(!matchesPrefix(key, "s:"), key);
+  assert.equal(normalizeTagKey(" s:? "), "s");
+  for (const candidate of [source, saved]) {
+    const command = getFFmpegCmd(candidate);
+    assert.match(command, /-disposition:s 0/);
+    assert.match(command, /-metadata:s:s "language=eng"/);
+    assert.match(command, /-disposition:s:5 forced/);
+    assert.doesNotMatch(command, /-(?:metadata|disposition):\S*\?/);
+    assert.match(command, /-map '0:s\?'/);
+  }
+  for (let i = 0; i < 6; i++) assert.ok(TAG_TRACKS.some((option) => option.value === String(i)));
+  assert.ok(TAG_TRACKS.some((option) => option.value === "custom"));
+});
 
 test("5fish survives import and export while an invalid variant is rejected", () => {
   const saved = getProfileJSON(formFromProfile(profile));

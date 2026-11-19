@@ -703,6 +703,7 @@ def normalize_encode_profile(profile):
         _as_bool(audio_params.get("vbr"), True) if audio_codec == "libopus" else False
     )
 
+    # '?' is valid for optional maps, but all-stream tags/flags omit ':?'.
     normalized = dict(raw)
     normalized.update(
         {
@@ -712,10 +713,16 @@ def normalize_encode_profile(profile):
             "subtitle_mode": subtitle_mode,
             "video_params": video_params,
             "audio_params": audio_params,
-            "metadata": dict(raw.get("metadata") or {})
+            "metadata": {
+                re.sub(r"^(s:[vasdt]):\?(\s*)$", r"\1\2", str(key)): value
+                for key, value in raw["metadata"].items()
+            }
             if isinstance(raw.get("metadata"), dict)
             else {},
-            "disposition": dict(raw.get("disposition") or {})
+            "disposition": {
+                re.sub(r"^([vasdt]):\?$", r"\1", str(key).strip()): value
+                for key, value in raw["disposition"].items()
+            }
             if isinstance(raw.get("disposition"), dict)
             else {},
             "rename": str(raw.get("rename") or "").strip(),

@@ -169,11 +169,9 @@ export const TRACK_CHOICES: Option[] = [
 ];
 
 export const TAG_TRACKS: Option[] = [
-  { value: "0", label: "Track 1" },
-  { value: "1", label: "Track 2" },
-  { value: "2", label: "Track 3" },
-  { value: "3", label: "Track 4" },
-  { value: "?", label: "All (?)" },
+  ...Array.from({ length: 6 }, (_, i) => ({ value: String(i), label: `Track ${i + 1}` })),
+  { value: "?", label: "All tracks" },
+  { value: "custom", label: "Custom track…" },
 ];
 
 export const TAG_TYPES: Option[] = [
@@ -302,10 +300,16 @@ export function crfHint(val: number): string {
 }
 
 /** Stream-scoped keys look like `s:v:0` (metadata) or `v:0` (disposition). */
+export function normalizeTagKey(key: string): string {
+  // Optional-map syntax is invalid for metadata and disposition selectors.
+  return key.trim().replace(/^(s:)?([vasdt]):\?$/, "$1$2");
+}
+
 export function matchesPrefix(key: string, prefix: string): boolean {
-  const trimmed = key.trim();
+  const trimmed = normalizeTagKey(key);
+  if (trimmed === prefix.slice(0, -1)) return true;
   if (!trimmed.startsWith(prefix)) return false;
-  return /^[\d?]+$/.test(trimmed.slice(prefix.length));
+  return /^\d+$/.test(trimmed.slice(prefix.length));
 }
 
 // ── Editor form state ───────────────────────────────────────────────
@@ -442,7 +446,7 @@ export function applyPreset(f: Form, preset: Profile) {
   f.meta = [];
   f.disp = [];
   Object.entries(preset.metadata || {}).forEach(([k, v]) => {
-    if (!standardMetadataKeys.includes(k.trim())) f.meta.push({ key: k, value: String(v) });
+    if (!standardMetadataKeys.includes(k.trim())) f.meta.push({ key: normalizeTagKey(k), value: String(v) });
   });
 }
 
@@ -502,9 +506,9 @@ export function formFromProfile(data: Profile): Form {
   setTrack(f, "a", md.a_track || "");
   setTrack(f, "s", md.s_track || "");
   Object.entries(md).forEach(([k, v]) => {
-    if (!standardMetadataKeys.includes(k.trim())) f.meta.push({ key: k, value: String(v) });
+    if (!standardMetadataKeys.includes(k.trim())) f.meta.push({ key: normalizeTagKey(k), value: String(v) });
   });
-  Object.entries(data.disposition || {}).forEach(([k, v]) => f.disp.push({ key: k, value: String(v) }));
+  Object.entries(data.disposition || {}).forEach(([k, v]) => f.disp.push({ key: normalizeTagKey(k), value: String(v) }));
   return f;
 }
 
@@ -527,7 +531,7 @@ export function getProfileJSON(f: Form): Profile {
   // the bot trims, so several tags can target the same stream.
   f.meta.forEach((item) => {
     if (item.key && item.value) {
-      let uniqueKey = item.key.trim();
+      let uniqueKey = normalizeTagKey(item.key);
       while (metadata[uniqueKey] !== undefined) uniqueKey += " ";
       metadata[uniqueKey] = item.value;
     }
@@ -535,7 +539,7 @@ export function getProfileJSON(f: Form): Profile {
 
   const disposition: Record<string, string> = {};
   f.disp.forEach((item) => {
-    if (item.key && item.value) disposition[item.key.trim()] = item.value;
+    if (item.key && item.value) disposition[normalizeTagKey(item.key)] = item.value;
   });
 
   const profile: Profile = {
@@ -757,7 +761,7 @@ export function getFFmpegCmd(profile: Profile): string {
     Object.entries(profile.metadata).forEach(([k, v]) => {
       if (!standardMetadataKeys.includes(k.trim())) {
         if (k.includes(':')) {
-          cmd += `  -metadata:${k.trim()} "${v}" \\\n`;
+          cmd += `  -metadata:${normalizeTagKey(k)} "${v}" \\\n`;
         } else {
           cmd += `  -metadata "${k}=${v}" \\\n`;
         }
@@ -768,7 +772,7 @@ export function getFFmpegCmd(profile: Profile): string {
   // Disposition flags
   if (profile.disposition) {
     Object.entries(profile.disposition).forEach(([k, v]) => {
-      cmd += `  -disposition:${k.trim()} ${v} \\\n`;
+      cmd += `  -disposition:${normalizeTagKey(k)} ${v} \\\n`;
     });
   }
 

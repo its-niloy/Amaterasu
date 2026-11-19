@@ -7,6 +7,7 @@
     TAG_TRACKS,
     TAG_TYPES,
     matchesPrefix,
+    normalizeTagKey,
     type Tag,
   } from "./profile";
 
@@ -30,6 +31,22 @@
   const rows = $derived(list.filter((item) => matchesPrefix(item.key, prefix)));
   const title = $derived(kind === "meta" ? `${streamLabel} metadata tags` : `${streamLabel} disposition flags`);
   const uid = $derived(`tags-${kind}-${stream}`);
+  let customRows = $state<Tag[]>([]);
+
+  function trackValue(item: Tag) {
+    const key = normalizeTagKey(item.key);
+    return key === prefix.slice(0, -1) ? "?" : key.slice(prefix.length);
+  }
+
+  function setTrack(item: Tag, value: string) {
+    if (value === "custom") {
+      customRows = [...customRows, item];
+      if (trackValue(item) === "?") item.key = `${prefix}0`;
+    } else {
+      customRows = customRows.filter((row) => row !== item);
+      item.key = normalizeTagKey(`${prefix}${value}`);
+    }
+  }
 
   function parse(value: string) {
     const i = value.indexOf("=");
@@ -44,6 +61,7 @@
   }
 
   function remove(item: Tag) {
+    customRows = customRows.filter((row) => row !== item);
     const i = list.indexOf(item);
     if (i !== -1) list.splice(i, 1);
   }
@@ -77,13 +95,30 @@
     <ul class="rows" aria-labelledby="{uid}-title">
       {#each rows as item, i (item)}
         {@const parsed = parse(item.value)}
+        {@const track = trackValue(item)}
+        {@const customTrack = customRows.includes(item) || !TAG_TRACKS.some((option) => option.value === track)}
         <li class="inset tag-row" class:disp={kind === "disp"}>
-          <Select
-            label="Track for {kind === 'meta' ? 'tag' : 'flag'} {i + 1}"
-            value={item.key.trim().slice(prefix.length)}
-            options={TAG_TRACKS}
-            onchange={(v) => (item.key = `${prefix}${v}`)}
-          />
+          <div class="tag-track">
+            <Select
+              label="Track for {kind === 'meta' ? 'tag' : 'flag'} {i + 1}"
+              value={customTrack ? "custom" : track}
+              options={TAG_TRACKS}
+              onchange={(v) => setTrack(item, v)}
+            />
+            {#if customTrack}
+              <input
+                type="number"
+                min="1"
+                step="1"
+                aria-label="Track number for {kind === 'meta' ? 'tag' : 'flag'} {i + 1}"
+                value={Number(track) + 1}
+                onchange={(e) => {
+                  const number = e.currentTarget.valueAsNumber;
+                  if (Number.isSafeInteger(number) && number >= 1) item.key = `${prefix}${number - 1}`;
+                }}
+              />
+            {/if}
+          </div>
           {#if kind === "meta"}
             <Select
               label="Tag type {i + 1}"
@@ -165,6 +200,12 @@
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-2);
+  }
+
+  .tag-track {
+    display: grid;
+    gap: var(--space-2);
+    min-width: 0;
   }
 
   .tag-row.disp {
